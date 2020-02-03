@@ -1,11 +1,7 @@
-// import 'package:huldra/config.dart';
-// import 'package:huldra/huldra.dart' as huldra;
-// import 'package:huldra/config.dart';
 import 'dart:ffi';
 import 'dart:io';
 
 import 'package:moor/moor.dart';
-import 'package:moor_ffi/database.dart';
 import 'package:moor_ffi/moor_ffi.dart';
 import 'package:nyxx/Vm.dart';
 import 'package:nyxx/nyxx.dart';
@@ -17,18 +13,17 @@ Nyxx bot;
 YamlConfig config;
 
 void main() async {
-  if (Platform.script.toFilePath().endsWith('.dart')) {
-    config = await YamlConfig.fromFile(
-        File('${Directory.current.path}/build/config.yaml'));
-  } else {
-    config = await YamlConfig.fromFile(
-        File('${Directory.current.path}/config.yaml'));
-  }
+  print(Platform.script.path.toFilePath());
+  var appPath = Platform.script.toFilePath().endsWith('.dart')
+      ? '${Directory.current.path}/build'
+      : '${Directory.current.path}';
+
+  print(appPath);
+
+  config = await YamlConfig.fromFile(File(appPath + '/config.yaml'));
 
   configureNyxxForVM();
   bot = Nyxx(config.getString('discordToken'));
-
-  await YamlConfig.fromFile(File('config.yaml'));
 
   bot.onMessageReceived.listen((MessageEvent e) {
     print(e.message.content);
@@ -47,8 +42,7 @@ void main() async {
     });
   }
 
-  File kbFile = File('${Directory.current.path}/kb.sqlite');
-  kbFile.createSync();
+  var kbFile = File('${Directory.current.path}/kb.sqlite');
 
   var kb = tables.Knowledgebase(VmDatabase(kbFile));
 
