@@ -5,6 +5,8 @@ part 'tables.g.dart';
 class Messages extends Table {
   TextColumn get id => text()();
   TextColumn get author => text()();
+  TextColumn get guild => text()();
+  TextColumn get channel => text()();
   TextColumn get content => text()();
   DateTimeColumn get timestamp => dateTime()();
 
@@ -14,6 +16,8 @@ class Messages extends Table {
 
 class Attachments extends Table {
   TextColumn get id => text()();
+  TextColumn get guild => text()();
+  TextColumn get channel => text()();
   TextColumn get url => text()();
   TextColumn get filename => text()();
 

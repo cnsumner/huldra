@@ -10,11 +10,15 @@ part of 'tables.dart';
 class Message extends DataClass implements Insertable<Message> {
   final String id;
   final String author;
+  final String guild;
+  final String channel;
   final String content;
   final DateTime timestamp;
   Message(
       {@required this.id,
       @required this.author,
+      @required this.guild,
+      @required this.channel,
       @required this.content,
       @required this.timestamp});
   factory Message.fromData(Map<String, dynamic> data, GeneratedDatabase db,
@@ -26,6 +30,10 @@ class Message extends DataClass implements Insertable<Message> {
       id: stringType.mapFromDatabaseResponse(data['${effectivePrefix}id']),
       author:
           stringType.mapFromDatabaseResponse(data['${effectivePrefix}author']),
+      guild:
+          stringType.mapFromDatabaseResponse(data['${effectivePrefix}guild']),
+      channel:
+          stringType.mapFromDatabaseResponse(data['${effectivePrefix}channel']),
       content:
           stringType.mapFromDatabaseResponse(data['${effectivePrefix}content']),
       timestamp: dateTimeType
@@ -38,6 +46,8 @@ class Message extends DataClass implements Insertable<Message> {
     return Message(
       id: serializer.fromJson<String>(json['id']),
       author: serializer.fromJson<String>(json['author']),
+      guild: serializer.fromJson<String>(json['guild']),
+      channel: serializer.fromJson<String>(json['channel']),
       content: serializer.fromJson<String>(json['content']),
       timestamp: serializer.fromJson<DateTime>(json['timestamp']),
     );
@@ -48,6 +58,8 @@ class Message extends DataClass implements Insertable<Message> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'author': serializer.toJson<String>(author),
+      'guild': serializer.toJson<String>(guild),
+      'channel': serializer.toJson<String>(channel),
       'content': serializer.toJson<String>(content),
       'timestamp': serializer.toJson<DateTime>(timestamp),
     };
@@ -59,6 +71,11 @@ class Message extends DataClass implements Insertable<Message> {
       id: id == null && nullToAbsent ? const Value.absent() : Value(id),
       author:
           author == null && nullToAbsent ? const Value.absent() : Value(author),
+      guild:
+          guild == null && nullToAbsent ? const Value.absent() : Value(guild),
+      channel: channel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(channel),
       content: content == null && nullToAbsent
           ? const Value.absent()
           : Value(content),
@@ -69,10 +86,17 @@ class Message extends DataClass implements Insertable<Message> {
   }
 
   Message copyWith(
-          {String id, String author, String content, DateTime timestamp}) =>
+          {String id,
+          String author,
+          String guild,
+          String channel,
+          String content,
+          DateTime timestamp}) =>
       Message(
         id: id ?? this.id,
         author: author ?? this.author,
+        guild: guild ?? this.guild,
+        channel: channel ?? this.channel,
         content: content ?? this.content,
         timestamp: timestamp ?? this.timestamp,
       );
@@ -81,6 +105,8 @@ class Message extends DataClass implements Insertable<Message> {
     return (StringBuffer('Message(')
           ..write('id: $id, ')
           ..write('author: $author, ')
+          ..write('guild: $guild, ')
+          ..write('channel: $channel, ')
           ..write('content: $content, ')
           ..write('timestamp: $timestamp')
           ..write(')'))
@@ -88,14 +114,22 @@ class Message extends DataClass implements Insertable<Message> {
   }
 
   @override
-  int get hashCode => $mrjf($mrjc(id.hashCode,
-      $mrjc(author.hashCode, $mrjc(content.hashCode, timestamp.hashCode))));
+  int get hashCode => $mrjf($mrjc(
+      id.hashCode,
+      $mrjc(
+          author.hashCode,
+          $mrjc(
+              guild.hashCode,
+              $mrjc(channel.hashCode,
+                  $mrjc(content.hashCode, timestamp.hashCode))))));
   @override
   bool operator ==(dynamic other) =>
       identical(this, other) ||
       (other is Message &&
           other.id == this.id &&
           other.author == this.author &&
+          other.guild == this.guild &&
+          other.channel == this.channel &&
           other.content == this.content &&
           other.timestamp == this.timestamp);
 }
@@ -103,31 +137,43 @@ class Message extends DataClass implements Insertable<Message> {
 class MessagesCompanion extends UpdateCompanion<Message> {
   final Value<String> id;
   final Value<String> author;
+  final Value<String> guild;
+  final Value<String> channel;
   final Value<String> content;
   final Value<DateTime> timestamp;
   const MessagesCompanion({
     this.id = const Value.absent(),
     this.author = const Value.absent(),
+    this.guild = const Value.absent(),
+    this.channel = const Value.absent(),
     this.content = const Value.absent(),
     this.timestamp = const Value.absent(),
   });
   MessagesCompanion.insert({
     @required String id,
     @required String author,
+    @required String guild,
+    @required String channel,
     @required String content,
     @required DateTime timestamp,
   })  : id = Value(id),
         author = Value(author),
+        guild = Value(guild),
+        channel = Value(channel),
         content = Value(content),
         timestamp = Value(timestamp);
   MessagesCompanion copyWith(
       {Value<String> id,
       Value<String> author,
+      Value<String> guild,
+      Value<String> channel,
       Value<String> content,
       Value<DateTime> timestamp}) {
     return MessagesCompanion(
       id: id ?? this.id,
       author: author ?? this.author,
+      guild: guild ?? this.guild,
+      channel: channel ?? this.channel,
       content: content ?? this.content,
       timestamp: timestamp ?? this.timestamp,
     );
@@ -162,6 +208,30 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
     );
   }
 
+  final VerificationMeta _guildMeta = const VerificationMeta('guild');
+  GeneratedTextColumn _guild;
+  @override
+  GeneratedTextColumn get guild => _guild ??= _constructGuild();
+  GeneratedTextColumn _constructGuild() {
+    return GeneratedTextColumn(
+      'guild',
+      $tableName,
+      false,
+    );
+  }
+
+  final VerificationMeta _channelMeta = const VerificationMeta('channel');
+  GeneratedTextColumn _channel;
+  @override
+  GeneratedTextColumn get channel => _channel ??= _constructChannel();
+  GeneratedTextColumn _constructChannel() {
+    return GeneratedTextColumn(
+      'channel',
+      $tableName,
+      false,
+    );
+  }
+
   final VerificationMeta _contentMeta = const VerificationMeta('content');
   GeneratedTextColumn _content;
   @override
@@ -187,7 +257,8 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
   }
 
   @override
-  List<GeneratedColumn> get $columns => [id, author, content, timestamp];
+  List<GeneratedColumn> get $columns =>
+      [id, author, guild, channel, content, timestamp];
   @override
   $MessagesTable get asDslTable => this;
   @override
@@ -208,6 +279,18 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
           _authorMeta, author.isAcceptableValue(d.author.value, _authorMeta));
     } else if (isInserting) {
       context.missing(_authorMeta);
+    }
+    if (d.guild.present) {
+      context.handle(
+          _guildMeta, guild.isAcceptableValue(d.guild.value, _guildMeta));
+    } else if (isInserting) {
+      context.missing(_guildMeta);
+    }
+    if (d.channel.present) {
+      context.handle(_channelMeta,
+          channel.isAcceptableValue(d.channel.value, _channelMeta));
+    } else if (isInserting) {
+      context.missing(_channelMeta);
     }
     if (d.content.present) {
       context.handle(_contentMeta,
@@ -241,6 +324,12 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
     if (d.author.present) {
       map['author'] = Variable<String, StringType>(d.author.value);
     }
+    if (d.guild.present) {
+      map['guild'] = Variable<String, StringType>(d.guild.value);
+    }
+    if (d.channel.present) {
+      map['channel'] = Variable<String, StringType>(d.channel.value);
+    }
     if (d.content.present) {
       map['content'] = Variable<String, StringType>(d.content.value);
     }
@@ -258,15 +347,26 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
 
 class Attachment extends DataClass implements Insertable<Attachment> {
   final String id;
+  final String guild;
+  final String channel;
   final String url;
   final String filename;
-  Attachment({@required this.id, @required this.url, @required this.filename});
+  Attachment(
+      {@required this.id,
+      @required this.guild,
+      @required this.channel,
+      @required this.url,
+      @required this.filename});
   factory Attachment.fromData(Map<String, dynamic> data, GeneratedDatabase db,
       {String prefix}) {
     final effectivePrefix = prefix ?? '';
     final stringType = db.typeSystem.forDartType<String>();
     return Attachment(
       id: stringType.mapFromDatabaseResponse(data['${effectivePrefix}id']),
+      guild:
+          stringType.mapFromDatabaseResponse(data['${effectivePrefix}guild']),
+      channel:
+          stringType.mapFromDatabaseResponse(data['${effectivePrefix}channel']),
       url: stringType.mapFromDatabaseResponse(data['${effectivePrefix}url']),
       filename: stringType
           .mapFromDatabaseResponse(data['${effectivePrefix}filename']),
@@ -277,6 +377,8 @@ class Attachment extends DataClass implements Insertable<Attachment> {
     serializer ??= moorRuntimeOptions.defaultSerializer;
     return Attachment(
       id: serializer.fromJson<String>(json['id']),
+      guild: serializer.fromJson<String>(json['guild']),
+      channel: serializer.fromJson<String>(json['channel']),
       url: serializer.fromJson<String>(json['url']),
       filename: serializer.fromJson<String>(json['filename']),
     );
@@ -286,6 +388,8 @@ class Attachment extends DataClass implements Insertable<Attachment> {
     serializer ??= moorRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
+      'guild': serializer.toJson<String>(guild),
+      'channel': serializer.toJson<String>(channel),
       'url': serializer.toJson<String>(url),
       'filename': serializer.toJson<String>(filename),
     };
@@ -295,6 +399,11 @@ class Attachment extends DataClass implements Insertable<Attachment> {
   AttachmentsCompanion createCompanion(bool nullToAbsent) {
     return AttachmentsCompanion(
       id: id == null && nullToAbsent ? const Value.absent() : Value(id),
+      guild:
+          guild == null && nullToAbsent ? const Value.absent() : Value(guild),
+      channel: channel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(channel),
       url: url == null && nullToAbsent ? const Value.absent() : Value(url),
       filename: filename == null && nullToAbsent
           ? const Value.absent()
@@ -302,8 +411,16 @@ class Attachment extends DataClass implements Insertable<Attachment> {
     );
   }
 
-  Attachment copyWith({String id, String url, String filename}) => Attachment(
+  Attachment copyWith(
+          {String id,
+          String guild,
+          String channel,
+          String url,
+          String filename}) =>
+      Attachment(
         id: id ?? this.id,
+        guild: guild ?? this.guild,
+        channel: channel ?? this.channel,
         url: url ?? this.url,
         filename: filename ?? this.filename,
       );
@@ -311,6 +428,8 @@ class Attachment extends DataClass implements Insertable<Attachment> {
   String toString() {
     return (StringBuffer('Attachment(')
           ..write('id: $id, ')
+          ..write('guild: $guild, ')
+          ..write('channel: $channel, ')
           ..write('url: $url, ')
           ..write('filename: $filename')
           ..write(')'))
@@ -318,37 +437,55 @@ class Attachment extends DataClass implements Insertable<Attachment> {
   }
 
   @override
-  int get hashCode =>
-      $mrjf($mrjc(id.hashCode, $mrjc(url.hashCode, filename.hashCode)));
+  int get hashCode => $mrjf($mrjc(
+      id.hashCode,
+      $mrjc(guild.hashCode,
+          $mrjc(channel.hashCode, $mrjc(url.hashCode, filename.hashCode)))));
   @override
   bool operator ==(dynamic other) =>
       identical(this, other) ||
       (other is Attachment &&
           other.id == this.id &&
+          other.guild == this.guild &&
+          other.channel == this.channel &&
           other.url == this.url &&
           other.filename == this.filename);
 }
 
 class AttachmentsCompanion extends UpdateCompanion<Attachment> {
   final Value<String> id;
+  final Value<String> guild;
+  final Value<String> channel;
   final Value<String> url;
   final Value<String> filename;
   const AttachmentsCompanion({
     this.id = const Value.absent(),
+    this.guild = const Value.absent(),
+    this.channel = const Value.absent(),
     this.url = const Value.absent(),
     this.filename = const Value.absent(),
   });
   AttachmentsCompanion.insert({
     @required String id,
+    @required String guild,
+    @required String channel,
     @required String url,
     @required String filename,
   })  : id = Value(id),
+        guild = Value(guild),
+        channel = Value(channel),
         url = Value(url),
         filename = Value(filename);
   AttachmentsCompanion copyWith(
-      {Value<String> id, Value<String> url, Value<String> filename}) {
+      {Value<String> id,
+      Value<String> guild,
+      Value<String> channel,
+      Value<String> url,
+      Value<String> filename}) {
     return AttachmentsCompanion(
       id: id ?? this.id,
+      guild: guild ?? this.guild,
+      channel: channel ?? this.channel,
       url: url ?? this.url,
       filename: filename ?? this.filename,
     );
@@ -367,6 +504,30 @@ class $AttachmentsTable extends Attachments
   GeneratedTextColumn _constructId() {
     return GeneratedTextColumn(
       'id',
+      $tableName,
+      false,
+    );
+  }
+
+  final VerificationMeta _guildMeta = const VerificationMeta('guild');
+  GeneratedTextColumn _guild;
+  @override
+  GeneratedTextColumn get guild => _guild ??= _constructGuild();
+  GeneratedTextColumn _constructGuild() {
+    return GeneratedTextColumn(
+      'guild',
+      $tableName,
+      false,
+    );
+  }
+
+  final VerificationMeta _channelMeta = const VerificationMeta('channel');
+  GeneratedTextColumn _channel;
+  @override
+  GeneratedTextColumn get channel => _channel ??= _constructChannel();
+  GeneratedTextColumn _constructChannel() {
+    return GeneratedTextColumn(
+      'channel',
       $tableName,
       false,
     );
@@ -397,7 +558,7 @@ class $AttachmentsTable extends Attachments
   }
 
   @override
-  List<GeneratedColumn> get $columns => [id, url, filename];
+  List<GeneratedColumn> get $columns => [id, guild, channel, url, filename];
   @override
   $AttachmentsTable get asDslTable => this;
   @override
@@ -412,6 +573,18 @@ class $AttachmentsTable extends Attachments
       context.handle(_idMeta, id.isAcceptableValue(d.id.value, _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
+    }
+    if (d.guild.present) {
+      context.handle(
+          _guildMeta, guild.isAcceptableValue(d.guild.value, _guildMeta));
+    } else if (isInserting) {
+      context.missing(_guildMeta);
+    }
+    if (d.channel.present) {
+      context.handle(_channelMeta,
+          channel.isAcceptableValue(d.channel.value, _channelMeta));
+    } else if (isInserting) {
+      context.missing(_channelMeta);
     }
     if (d.url.present) {
       context.handle(_urlMeta, url.isAcceptableValue(d.url.value, _urlMeta));
@@ -440,6 +613,12 @@ class $AttachmentsTable extends Attachments
     final map = <String, Variable>{};
     if (d.id.present) {
       map['id'] = Variable<String, StringType>(d.id.value);
+    }
+    if (d.guild.present) {
+      map['guild'] = Variable<String, StringType>(d.guild.value);
+    }
+    if (d.channel.present) {
+      map['channel'] = Variable<String, StringType>(d.channel.value);
     }
     if (d.url.present) {
       map['url'] = Variable<String, StringType>(d.url.value);
