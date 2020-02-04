@@ -46,7 +46,7 @@ class Knowledgebase extends _$Knowledgebase {
   Future<void> insertMessage(Message message, List<Attachment> attachmentList,
       List<MessageAttachment> messageAttachmentList) {
     return transaction(() async {
-      await into(messages).insert(message, mode: InsertMode.insertOrIgnore);
+      await into(messages).insert(message, mode: InsertMode.insert);
 
       await batch((batch) {
         batch.insertAll(attachments, attachmentList,
@@ -55,7 +55,7 @@ class Knowledgebase extends _$Knowledgebase {
 
       await batch((batch) {
         batch.insertAll(messageAttachments, messageAttachmentList,
-            mode: InsertMode.insertOrIgnore);
+            mode: InsertMode.insert);
       });
     });
   }

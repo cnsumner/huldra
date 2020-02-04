@@ -2,6 +2,7 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:moor/moor.dart';
+import 'package:moor_ffi/database.dart';
 import 'package:moor_ffi/moor_ffi.dart';
 import 'package:nyxx/Vm.dart';
 import 'package:nyxx/nyxx.dart';
@@ -20,8 +21,7 @@ void main() async {
 
   config = await YamlConfig.fromFile(File('$basePath/config.yaml'));
 
-  configureNyxxForVM();
-  bot = Nyxx(config.getString('discordToken'));
+  bot = NyxxVm(config.getString('discordToken'));
 
   if (Platform.isWindows) {
     open.overrideFor(OperatingSystem.windows, () {
@@ -78,7 +78,7 @@ void main() async {
     var messages =
         await channel.getMessages(after: Snowflake('465587079485849610'));
 
-    messages.forEach((s, m) {
+    await messages.forEach((m) {
       if (m.author.bot || (m.content.isEmpty && m.attachments.isEmpty)) {
         return;
       }
@@ -110,9 +110,18 @@ void main() async {
       }
 
       kb.insertMessage(message, attachments, messageAttachments).then(
-          (result) => print('Added message ${message.id} to db.'),
-          onError: (e) =>
-              print('Failed to add message to db: ${e.toString()}'));
+        (result) => print('Added message ${message.id} to db.'),
+        onError: (e) {
+          if (e.runtimeType == SqliteException &&
+              (e as SqliteException)
+                  .message
+                  .contains('UNIQUE constraint failed: messages.id')) {
+            print('Skipping message already in db');
+          } else {
+            print('Failed to add message to db: ${e.toString()}');
+          }
+        },
+      );
     });
   });
 
