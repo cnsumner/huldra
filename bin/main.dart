@@ -11,53 +11,118 @@ import 'package:yaml_config/yaml_config.dart';
 
 Nyxx bot;
 YamlConfig config;
+// 07/01/2018
 
 void main() async {
-  print(Platform.script.path.toFilePath());
-  var appPath = Platform.script.toFilePath().endsWith('.dart')
-      ? '${Directory.current.path}/build'
-      : '${Directory.current.path}';
+  var basePath = Platform.script.toFilePath().endsWith('.dart')
+      ? '${File.fromUri(Platform.script).parent.parent.path}/build'
+      : '${File.fromUri(Platform.script).parent.path}';
 
-  print(appPath);
-
-  config = await YamlConfig.fromFile(File(appPath + '/config.yaml'));
+  config = await YamlConfig.fromFile(File('$basePath/config.yaml'));
 
   configureNyxxForVM();
   bot = Nyxx(config.getString('discordToken'));
 
-  bot.onMessageReceived.listen((MessageEvent e) {
-    print(e.message.content);
-  });
-
   if (Platform.isWindows) {
     open.overrideFor(OperatingSystem.windows, () {
-      if (Platform.script.toFilePath().endsWith('.dart')) {
-        return DynamicLibrary.open(
-            '${Directory.current.path}/build/sqlite3.dll');
-      } else {
-        var lib = File('${Directory.current.path}/sqlite3.dll');
-        print(lib.existsSync());
-        return DynamicLibrary.open(lib.path);
-      }
+      return DynamicLibrary.open('${basePath}/sqlite3.dll');
     });
   }
 
-  var kbFile = File('${Directory.current.path}/kb.sqlite');
+  var kbFile = File('${basePath}/kb.sqlite');
 
   var kb = tables.Knowledgebase(VmDatabase(kbFile));
 
-  kb.allmessages.then((result) {
-    print("test");
-    print(result.toString());
+  bot.onMessageReceived.listen((MessageEvent e) {
+    if (e.message.author.bot ||
+        (e.message.content.isEmpty && e.message.attachments.isEmpty)) {
+      return;
+    }
+
+    var message = tables.Message(
+        id: e.message.id.toString(),
+        author: e.message.author.id.toString(),
+        timestamp: e.message.createdAt,
+        content: e.message.content);
+
+    var attachments = <tables.Attachment>[];
+
+    if (e.message.attachments.isNotEmpty) {
+      e.message.attachments.forEach((id, attachment) {
+        attachments.add(tables.Attachment(
+            id: id.toString(),
+            url: attachment.url,
+            filename: attachment.filename));
+      });
+    }
+
+    var messageAttachments = <tables.MessageAttachment>[];
+
+    if (attachments.isNotEmpty) {
+      attachments.forEach((attachment) {
+        messageAttachments.add(tables.MessageAttachment(
+            attachmentId: attachment.id, messageId: message.id));
+      });
+    }
+
+    kb.insertMessage(message, attachments, messageAttachments).then(
+        (result) => print('Added message ${message.id} to db.'),
+        onError: (e) => print('Failed to add message to db: ${e.toString()}'));
   });
 
-  kb
-      .into(kb.messages)
-      .insert(tables.MessagesCompanion(
-          author: Value("Rocks25"),
-          content: Value("nice"),
-          timestamp: Value(DateTime.now())))
-      .then((result) => print(result.toString()));
+  bot.onReady.listen((data) async {
+    var channel = (bot.channels
+        .find((c) => c.id.id == '96407444506300416')
+        .first as MessageChannel);
 
-  kb.close();
+    var messages =
+        await channel.getMessages(after: Snowflake('465587079485849610'));
+
+    messages.forEach((s, m) {
+      if (m.author.bot || (m.content.isEmpty && m.attachments.isEmpty)) {
+        return;
+      }
+
+      var message = tables.Message(
+          id: m.id.toString(),
+          author: m.author.id.toString(),
+          timestamp: m.createdAt,
+          content: m.content);
+
+      var attachments = <tables.Attachment>[];
+
+      if (m.attachments.isNotEmpty) {
+        m.attachments.forEach((id, attachment) {
+          attachments.add(tables.Attachment(
+              id: id.toString(),
+              url: attachment.url,
+              filename: attachment.filename));
+        });
+      }
+
+      var messageAttachments = <tables.MessageAttachment>[];
+
+      if (attachments.isNotEmpty) {
+        attachments.forEach((attachment) {
+          messageAttachments.add(tables.MessageAttachment(
+              attachmentId: attachment.id, messageId: message.id));
+        });
+      }
+
+      kb.insertMessage(message, attachments, messageAttachments).then(
+          (result) => print('Added message ${message.id} to db.'),
+          onError: (e) =>
+              print('Failed to add message to db: ${e.toString()}'));
+    });
+  });
+
+  // kb
+  //     .into(kb.messages)
+  //     .insert(tables.MessagesCompanion(
+  //         author: Value("Rocks25"),
+  //         content: Value("nice"),
+  //         timestamp: Value(DateTime.now())))
+  //     .then((result) => print(result.toString()));
+
+  // kb.close();
 }

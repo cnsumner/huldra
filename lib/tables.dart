@@ -1,26 +1,68 @@
 import 'package:moor/moor.dart';
 
-// assuming that your file is called filename.dart. This will give an error at first,
-// but it's needed for moor to know about the generated code
 part 'tables.g.dart';
 
-// this will generate a table called "todos" for us. The rows of that table will
-// be represented by a class called "Todo".
 class Messages extends Table {
-  IntColumn get id => integer().autoIncrement()();
+  TextColumn get id => text()();
   TextColumn get author => text()();
   TextColumn get content => text()();
   DateTimeColumn get timestamp => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
 }
 
-// this annotation tells moor to prepare a database class that uses both of the
-// tables we just defined. We'll see how to use that database class in a moment.
-@UseMoor(tables: [Messages])
+class Attachments extends Table {
+  TextColumn get id => text()();
+  TextColumn get url => text()();
+  TextColumn get filename => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class MessageAttachments extends Table {
+  TextColumn get messageId =>
+      text().customConstraint('REFERENCES Messages(id)')();
+  TextColumn get attachmentId =>
+      text().customConstraint('REFERENCES Attachments(id)')();
+
+  @override
+  Set<Column> get primaryKey => {messageId, attachmentId};
+}
+
+@UseMoor(tables: [Messages, Attachments, MessageAttachments])
 class Knowledgebase extends _$Knowledgebase {
   Knowledgebase(QueryExecutor e) : super(e);
 
   @override
   int get schemaVersion => 1;
 
-  Future<List<Message>> get allmessages => select(messages).get();
+  Future<List<Message>> get allMessages => select(messages).get();
+  Future<List<Attachment>> get allAttachments => select(attachments).get();
+  Future<List<MessageAttachment>> get allMessageAttachments =>
+      select(messageAttachments).get();
+
+  Future<void> insertMessage(Message message, List<Attachment> attachmentList,
+      List<MessageAttachment> messageAttachmentList) {
+    return transaction(() async {
+      await into(messages).insert(message, mode: InsertMode.insertOrIgnore);
+
+      await batch((batch) {
+        batch.insertAll(attachments, attachmentList,
+            mode: InsertMode.insertOrIgnore);
+      });
+
+      await batch((batch) {
+        batch.insertAll(messageAttachments, messageAttachmentList,
+            mode: InsertMode.insertOrIgnore);
+      });
+    });
+  }
+
+  @override
+  MigrationStrategy get migration =>
+      MigrationStrategy(beforeOpen: (details) async {
+        await customStatement('PRAGMA foreign_keys = ON');
+      });
 }

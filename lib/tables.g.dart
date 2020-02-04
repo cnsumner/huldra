@@ -8,7 +8,7 @@ part of 'tables.dart';
 
 // ignore_for_file: unnecessary_brace_in_string_interps, unnecessary_this
 class Message extends DataClass implements Insertable<Message> {
-  final int id;
+  final String id;
   final String author;
   final String content;
   final DateTime timestamp;
@@ -20,11 +20,10 @@ class Message extends DataClass implements Insertable<Message> {
   factory Message.fromData(Map<String, dynamic> data, GeneratedDatabase db,
       {String prefix}) {
     final effectivePrefix = prefix ?? '';
-    final intType = db.typeSystem.forDartType<int>();
     final stringType = db.typeSystem.forDartType<String>();
     final dateTimeType = db.typeSystem.forDartType<DateTime>();
     return Message(
-      id: intType.mapFromDatabaseResponse(data['${effectivePrefix}id']),
+      id: stringType.mapFromDatabaseResponse(data['${effectivePrefix}id']),
       author:
           stringType.mapFromDatabaseResponse(data['${effectivePrefix}author']),
       content:
@@ -37,7 +36,7 @@ class Message extends DataClass implements Insertable<Message> {
       {ValueSerializer serializer}) {
     serializer ??= moorRuntimeOptions.defaultSerializer;
     return Message(
-      id: serializer.fromJson<int>(json['id']),
+      id: serializer.fromJson<String>(json['id']),
       author: serializer.fromJson<String>(json['author']),
       content: serializer.fromJson<String>(json['content']),
       timestamp: serializer.fromJson<DateTime>(json['timestamp']),
@@ -47,7 +46,7 @@ class Message extends DataClass implements Insertable<Message> {
   Map<String, dynamic> toJson({ValueSerializer serializer}) {
     serializer ??= moorRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
+      'id': serializer.toJson<String>(id),
       'author': serializer.toJson<String>(author),
       'content': serializer.toJson<String>(content),
       'timestamp': serializer.toJson<DateTime>(timestamp),
@@ -70,7 +69,7 @@ class Message extends DataClass implements Insertable<Message> {
   }
 
   Message copyWith(
-          {int id, String author, String content, DateTime timestamp}) =>
+          {String id, String author, String content, DateTime timestamp}) =>
       Message(
         id: id ?? this.id,
         author: author ?? this.author,
@@ -102,7 +101,7 @@ class Message extends DataClass implements Insertable<Message> {
 }
 
 class MessagesCompanion extends UpdateCompanion<Message> {
-  final Value<int> id;
+  final Value<String> id;
   final Value<String> author;
   final Value<String> content;
   final Value<DateTime> timestamp;
@@ -113,15 +112,16 @@ class MessagesCompanion extends UpdateCompanion<Message> {
     this.timestamp = const Value.absent(),
   });
   MessagesCompanion.insert({
-    this.id = const Value.absent(),
+    @required String id,
     @required String author,
     @required String content,
     @required DateTime timestamp,
-  })  : author = Value(author),
+  })  : id = Value(id),
+        author = Value(author),
         content = Value(content),
         timestamp = Value(timestamp);
   MessagesCompanion copyWith(
-      {Value<int> id,
+      {Value<String> id,
       Value<String> author,
       Value<String> content,
       Value<DateTime> timestamp}) {
@@ -139,12 +139,15 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
   final String _alias;
   $MessagesTable(this._db, [this._alias]);
   final VerificationMeta _idMeta = const VerificationMeta('id');
-  GeneratedIntColumn _id;
+  GeneratedTextColumn _id;
   @override
-  GeneratedIntColumn get id => _id ??= _constructId();
-  GeneratedIntColumn _constructId() {
-    return GeneratedIntColumn('id', $tableName, false,
-        hasAutoIncrement: true, declaredAsPrimaryKey: true);
+  GeneratedTextColumn get id => _id ??= _constructId();
+  GeneratedTextColumn _constructId() {
+    return GeneratedTextColumn(
+      'id',
+      $tableName,
+      false,
+    );
   }
 
   final VerificationMeta _authorMeta = const VerificationMeta('author');
@@ -197,6 +200,8 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
     final context = VerificationContext();
     if (d.id.present) {
       context.handle(_idMeta, id.isAcceptableValue(d.id.value, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
     }
     if (d.author.present) {
       context.handle(
@@ -231,7 +236,7 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
   Map<String, Variable> entityToSql(MessagesCompanion d) {
     final map = <String, Variable>{};
     if (d.id.present) {
-      map['id'] = Variable<int, IntType>(d.id.value);
+      map['id'] = Variable<String, StringType>(d.id.value);
     }
     if (d.author.present) {
       map['author'] = Variable<String, StringType>(d.author.value);
@@ -251,12 +256,389 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
   }
 }
 
+class Attachment extends DataClass implements Insertable<Attachment> {
+  final String id;
+  final String url;
+  final String filename;
+  Attachment({@required this.id, @required this.url, @required this.filename});
+  factory Attachment.fromData(Map<String, dynamic> data, GeneratedDatabase db,
+      {String prefix}) {
+    final effectivePrefix = prefix ?? '';
+    final stringType = db.typeSystem.forDartType<String>();
+    return Attachment(
+      id: stringType.mapFromDatabaseResponse(data['${effectivePrefix}id']),
+      url: stringType.mapFromDatabaseResponse(data['${effectivePrefix}url']),
+      filename: stringType
+          .mapFromDatabaseResponse(data['${effectivePrefix}filename']),
+    );
+  }
+  factory Attachment.fromJson(Map<String, dynamic> json,
+      {ValueSerializer serializer}) {
+    serializer ??= moorRuntimeOptions.defaultSerializer;
+    return Attachment(
+      id: serializer.fromJson<String>(json['id']),
+      url: serializer.fromJson<String>(json['url']),
+      filename: serializer.fromJson<String>(json['filename']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer serializer}) {
+    serializer ??= moorRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'url': serializer.toJson<String>(url),
+      'filename': serializer.toJson<String>(filename),
+    };
+  }
+
+  @override
+  AttachmentsCompanion createCompanion(bool nullToAbsent) {
+    return AttachmentsCompanion(
+      id: id == null && nullToAbsent ? const Value.absent() : Value(id),
+      url: url == null && nullToAbsent ? const Value.absent() : Value(url),
+      filename: filename == null && nullToAbsent
+          ? const Value.absent()
+          : Value(filename),
+    );
+  }
+
+  Attachment copyWith({String id, String url, String filename}) => Attachment(
+        id: id ?? this.id,
+        url: url ?? this.url,
+        filename: filename ?? this.filename,
+      );
+  @override
+  String toString() {
+    return (StringBuffer('Attachment(')
+          ..write('id: $id, ')
+          ..write('url: $url, ')
+          ..write('filename: $filename')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      $mrjf($mrjc(id.hashCode, $mrjc(url.hashCode, filename.hashCode)));
+  @override
+  bool operator ==(dynamic other) =>
+      identical(this, other) ||
+      (other is Attachment &&
+          other.id == this.id &&
+          other.url == this.url &&
+          other.filename == this.filename);
+}
+
+class AttachmentsCompanion extends UpdateCompanion<Attachment> {
+  final Value<String> id;
+  final Value<String> url;
+  final Value<String> filename;
+  const AttachmentsCompanion({
+    this.id = const Value.absent(),
+    this.url = const Value.absent(),
+    this.filename = const Value.absent(),
+  });
+  AttachmentsCompanion.insert({
+    @required String id,
+    @required String url,
+    @required String filename,
+  })  : id = Value(id),
+        url = Value(url),
+        filename = Value(filename);
+  AttachmentsCompanion copyWith(
+      {Value<String> id, Value<String> url, Value<String> filename}) {
+    return AttachmentsCompanion(
+      id: id ?? this.id,
+      url: url ?? this.url,
+      filename: filename ?? this.filename,
+    );
+  }
+}
+
+class $AttachmentsTable extends Attachments
+    with TableInfo<$AttachmentsTable, Attachment> {
+  final GeneratedDatabase _db;
+  final String _alias;
+  $AttachmentsTable(this._db, [this._alias]);
+  final VerificationMeta _idMeta = const VerificationMeta('id');
+  GeneratedTextColumn _id;
+  @override
+  GeneratedTextColumn get id => _id ??= _constructId();
+  GeneratedTextColumn _constructId() {
+    return GeneratedTextColumn(
+      'id',
+      $tableName,
+      false,
+    );
+  }
+
+  final VerificationMeta _urlMeta = const VerificationMeta('url');
+  GeneratedTextColumn _url;
+  @override
+  GeneratedTextColumn get url => _url ??= _constructUrl();
+  GeneratedTextColumn _constructUrl() {
+    return GeneratedTextColumn(
+      'url',
+      $tableName,
+      false,
+    );
+  }
+
+  final VerificationMeta _filenameMeta = const VerificationMeta('filename');
+  GeneratedTextColumn _filename;
+  @override
+  GeneratedTextColumn get filename => _filename ??= _constructFilename();
+  GeneratedTextColumn _constructFilename() {
+    return GeneratedTextColumn(
+      'filename',
+      $tableName,
+      false,
+    );
+  }
+
+  @override
+  List<GeneratedColumn> get $columns => [id, url, filename];
+  @override
+  $AttachmentsTable get asDslTable => this;
+  @override
+  String get $tableName => _alias ?? 'attachments';
+  @override
+  final String actualTableName = 'attachments';
+  @override
+  VerificationContext validateIntegrity(AttachmentsCompanion d,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    if (d.id.present) {
+      context.handle(_idMeta, id.isAcceptableValue(d.id.value, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (d.url.present) {
+      context.handle(_urlMeta, url.isAcceptableValue(d.url.value, _urlMeta));
+    } else if (isInserting) {
+      context.missing(_urlMeta);
+    }
+    if (d.filename.present) {
+      context.handle(_filenameMeta,
+          filename.isAcceptableValue(d.filename.value, _filenameMeta));
+    } else if (isInserting) {
+      context.missing(_filenameMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Attachment map(Map<String, dynamic> data, {String tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : null;
+    return Attachment.fromData(data, _db, prefix: effectivePrefix);
+  }
+
+  @override
+  Map<String, Variable> entityToSql(AttachmentsCompanion d) {
+    final map = <String, Variable>{};
+    if (d.id.present) {
+      map['id'] = Variable<String, StringType>(d.id.value);
+    }
+    if (d.url.present) {
+      map['url'] = Variable<String, StringType>(d.url.value);
+    }
+    if (d.filename.present) {
+      map['filename'] = Variable<String, StringType>(d.filename.value);
+    }
+    return map;
+  }
+
+  @override
+  $AttachmentsTable createAlias(String alias) {
+    return $AttachmentsTable(_db, alias);
+  }
+}
+
+class MessageAttachment extends DataClass
+    implements Insertable<MessageAttachment> {
+  final String messageId;
+  final String attachmentId;
+  MessageAttachment({@required this.messageId, @required this.attachmentId});
+  factory MessageAttachment.fromData(
+      Map<String, dynamic> data, GeneratedDatabase db,
+      {String prefix}) {
+    final effectivePrefix = prefix ?? '';
+    final stringType = db.typeSystem.forDartType<String>();
+    return MessageAttachment(
+      messageId: stringType
+          .mapFromDatabaseResponse(data['${effectivePrefix}message_id']),
+      attachmentId: stringType
+          .mapFromDatabaseResponse(data['${effectivePrefix}attachment_id']),
+    );
+  }
+  factory MessageAttachment.fromJson(Map<String, dynamic> json,
+      {ValueSerializer serializer}) {
+    serializer ??= moorRuntimeOptions.defaultSerializer;
+    return MessageAttachment(
+      messageId: serializer.fromJson<String>(json['messageId']),
+      attachmentId: serializer.fromJson<String>(json['attachmentId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer serializer}) {
+    serializer ??= moorRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'messageId': serializer.toJson<String>(messageId),
+      'attachmentId': serializer.toJson<String>(attachmentId),
+    };
+  }
+
+  @override
+  MessageAttachmentsCompanion createCompanion(bool nullToAbsent) {
+    return MessageAttachmentsCompanion(
+      messageId: messageId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(messageId),
+      attachmentId: attachmentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(attachmentId),
+    );
+  }
+
+  MessageAttachment copyWith({String messageId, String attachmentId}) =>
+      MessageAttachment(
+        messageId: messageId ?? this.messageId,
+        attachmentId: attachmentId ?? this.attachmentId,
+      );
+  @override
+  String toString() {
+    return (StringBuffer('MessageAttachment(')
+          ..write('messageId: $messageId, ')
+          ..write('attachmentId: $attachmentId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => $mrjf($mrjc(messageId.hashCode, attachmentId.hashCode));
+  @override
+  bool operator ==(dynamic other) =>
+      identical(this, other) ||
+      (other is MessageAttachment &&
+          other.messageId == this.messageId &&
+          other.attachmentId == this.attachmentId);
+}
+
+class MessageAttachmentsCompanion extends UpdateCompanion<MessageAttachment> {
+  final Value<String> messageId;
+  final Value<String> attachmentId;
+  const MessageAttachmentsCompanion({
+    this.messageId = const Value.absent(),
+    this.attachmentId = const Value.absent(),
+  });
+  MessageAttachmentsCompanion.insert({
+    @required String messageId,
+    @required String attachmentId,
+  })  : messageId = Value(messageId),
+        attachmentId = Value(attachmentId);
+  MessageAttachmentsCompanion copyWith(
+      {Value<String> messageId, Value<String> attachmentId}) {
+    return MessageAttachmentsCompanion(
+      messageId: messageId ?? this.messageId,
+      attachmentId: attachmentId ?? this.attachmentId,
+    );
+  }
+}
+
+class $MessageAttachmentsTable extends MessageAttachments
+    with TableInfo<$MessageAttachmentsTable, MessageAttachment> {
+  final GeneratedDatabase _db;
+  final String _alias;
+  $MessageAttachmentsTable(this._db, [this._alias]);
+  final VerificationMeta _messageIdMeta = const VerificationMeta('messageId');
+  GeneratedTextColumn _messageId;
+  @override
+  GeneratedTextColumn get messageId => _messageId ??= _constructMessageId();
+  GeneratedTextColumn _constructMessageId() {
+    return GeneratedTextColumn('message_id', $tableName, false,
+        $customConstraints: 'REFERENCES Messages(id)');
+  }
+
+  final VerificationMeta _attachmentIdMeta =
+      const VerificationMeta('attachmentId');
+  GeneratedTextColumn _attachmentId;
+  @override
+  GeneratedTextColumn get attachmentId =>
+      _attachmentId ??= _constructAttachmentId();
+  GeneratedTextColumn _constructAttachmentId() {
+    return GeneratedTextColumn('attachment_id', $tableName, false,
+        $customConstraints: 'REFERENCES Attachments(id)');
+  }
+
+  @override
+  List<GeneratedColumn> get $columns => [messageId, attachmentId];
+  @override
+  $MessageAttachmentsTable get asDslTable => this;
+  @override
+  String get $tableName => _alias ?? 'message_attachments';
+  @override
+  final String actualTableName = 'message_attachments';
+  @override
+  VerificationContext validateIntegrity(MessageAttachmentsCompanion d,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    if (d.messageId.present) {
+      context.handle(_messageIdMeta,
+          messageId.isAcceptableValue(d.messageId.value, _messageIdMeta));
+    } else if (isInserting) {
+      context.missing(_messageIdMeta);
+    }
+    if (d.attachmentId.present) {
+      context.handle(
+          _attachmentIdMeta,
+          attachmentId.isAcceptableValue(
+              d.attachmentId.value, _attachmentIdMeta));
+    } else if (isInserting) {
+      context.missing(_attachmentIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {messageId, attachmentId};
+  @override
+  MessageAttachment map(Map<String, dynamic> data, {String tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : null;
+    return MessageAttachment.fromData(data, _db, prefix: effectivePrefix);
+  }
+
+  @override
+  Map<String, Variable> entityToSql(MessageAttachmentsCompanion d) {
+    final map = <String, Variable>{};
+    if (d.messageId.present) {
+      map['message_id'] = Variable<String, StringType>(d.messageId.value);
+    }
+    if (d.attachmentId.present) {
+      map['attachment_id'] = Variable<String, StringType>(d.attachmentId.value);
+    }
+    return map;
+  }
+
+  @override
+  $MessageAttachmentsTable createAlias(String alias) {
+    return $MessageAttachmentsTable(_db, alias);
+  }
+}
+
 abstract class _$Knowledgebase extends GeneratedDatabase {
   _$Knowledgebase(QueryExecutor e) : super(SqlTypeSystem.defaultInstance, e);
   $MessagesTable _messages;
   $MessagesTable get messages => _messages ??= $MessagesTable(this);
+  $AttachmentsTable _attachments;
+  $AttachmentsTable get attachments => _attachments ??= $AttachmentsTable(this);
+  $MessageAttachmentsTable _messageAttachments;
+  $MessageAttachmentsTable get messageAttachments =>
+      _messageAttachments ??= $MessageAttachmentsTable(this);
   @override
   Iterable<TableInfo> get allTables => allSchemaEntities.whereType<TableInfo>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [messages];
+  List<DatabaseSchemaEntity> get allSchemaEntities =>
+      [messages, attachments, messageAttachments];
 }
