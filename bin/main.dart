@@ -38,5 +38,6 @@ void main() async {
     return Knowledgebase(VmDatabase(kbFile));
   });
 
+  // initialize bot
   var huldra = Huldra();
 }

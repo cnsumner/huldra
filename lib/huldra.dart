@@ -1,27 +1,30 @@
 import 'package:injector/injector.dart';
 import 'package:moor_ffi/database.dart';
 import 'package:nyxx/Vm.dart';
-import 'package:nyxx/commands.dart';
 import 'package:nyxx/nyxx.dart';
 import 'package:yaml_config/yaml_config.dart';
 import 'package:huldra/tables.dart' as tables;
-import 'package:huldra/commands.dart';
 
 class Huldra {
   Nyxx bot;
-  CommandsFramework cmdFramework;
 
   Huldra() {
     var _config = Injector.appInstance.getDependency<YamlConfig>();
 
     bot = NyxxVm(_config.getString('discordToken'));
 
-    cmdFramework = CommandsFramework(bot,
-        prefix: '_', admins: [Snowflake(_config.getInt('adminId'))]);
+    // cmdFramework = CommandsFramework(bot,
+    //     prefix: '_', admins: [Snowflake(_config.getInt('adminId'))]);
 
-    cmdFramework.discoverCommands();
+    // cmdFramework.discoverCommands();
 
     bot.onMessageReceived.listen((MessageEvent e) {
+      if (e.message.content.startsWith('_') &&
+          !e.message.content.startsWith('__')) {
+        processCommands(e);
+        return;
+      }
+
       if (e.message.author.bot ||
           (e.message.content.isEmpty && e.message.attachments.isEmpty)) {
         return;
@@ -128,6 +131,23 @@ class Huldra {
       return false;
     } else {
       return true;
+    }
+  }
+
+  void processCommands(MessageEvent e) {
+    if (e.message.content.startsWith('_fetch') &&
+        e.message.author.id.id == '96407239232884736') {
+      var arguments = e.message.content.split(' ').removeAt(0);
+      if (arguments.isNotEmpty) {
+        switch (arguments.length) {
+          case 1:
+            break;
+          case 2:
+            break;
+          default:
+          
+        }
+      }
     }
   }
 }
