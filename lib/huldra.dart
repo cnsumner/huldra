@@ -13,24 +13,20 @@ class Huldra {
 
     bot = NyxxVm(_config.getString('discordToken'));
 
-    // cmdFramework = CommandsFramework(bot,
-    //     prefix: '_', admins: [Snowflake(_config.getInt('adminId'))]);
-
-    // cmdFramework.discoverCommands();
-
     bot.onMessageReceived.listen((MessageEvent e) {
       if (e.message.content.startsWith('_') &&
           !e.message.content.startsWith('__')) {
-        processCommands(e);
+        _processCommands(e);
         return;
       }
 
       if (e.message.author.bot ||
           (e.message.content.isEmpty && e.message.attachments.isEmpty)) {
+        print('Ignoring bot or empty message: ${e.message.id.id}');
         return;
       }
 
-      addMessage(e.message);
+      _addMessage(e.message);
     });
 
     bot.onReady.listen((_) {
@@ -76,7 +72,7 @@ class Huldra {
     // });
   }
 
-  Future<bool> addMessage(Message m) async {
+  Future<bool> _addMessage(Message m) async {
     var message = tables.Message(
         id: m.id.toString(),
         guild: m.guild.id.toString(),
@@ -134,7 +130,7 @@ class Huldra {
     }
   }
 
-  void processCommands(MessageEvent e) {
+  void _processCommands(MessageEvent e) {
     if (e.message.content.startsWith('_fetch') &&
         e.message.author.id.id == '96407239232884736') {
       var arguments = e.message.content.split(' ').removeAt(0);
@@ -145,7 +141,6 @@ class Huldra {
           case 2:
             break;
           default:
-          
         }
       }
     }
