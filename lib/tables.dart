@@ -43,7 +43,9 @@ class Knowledgebase extends _$Knowledgebase {
   int get schemaVersion => 1;
 
   Future<List<Message>> get allMessages => select(messages).get();
+
   Future<List<Attachment>> get allAttachments => select(attachments).get();
+
   Future<List<MessageAttachment>> get allMessageAttachments =>
       select(messageAttachments).get();
 

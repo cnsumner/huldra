@@ -4,10 +4,7 @@ import 'dart:io';
 import 'package:huldra/huldra.dart';
 import 'package:huldra/tables.dart';
 import 'package:injector/injector.dart';
-import 'package:moor_ffi/database.dart';
 import 'package:moor_ffi/moor_ffi.dart';
-import 'package:nyxx/Vm.dart';
-import 'package:nyxx/nyxx.dart';
 import 'package:moor_ffi/open_helper.dart';
 import 'package:yaml_config/yaml_config.dart';
 
@@ -39,5 +36,5 @@ void main() async {
   });
 
   // initialize bot
-  var huldra = Huldra();
+  Huldra();
 }

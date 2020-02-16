@@ -14,19 +14,16 @@ class Huldra {
     bot = NyxxVm(_config.getString('discordToken'));
 
     bot.onMessageReceived.listen((MessageEvent e) {
-      if (e.message.content.startsWith('_') &&
-          !e.message.content.startsWith('__')) {
-        _processCommands(e);
-        return;
-      }
-
       if (e.message.author.bot ||
           (e.message.content.isEmpty && e.message.attachments.isEmpty)) {
         print('Ignoring bot or empty message: ${e.message.id.id}');
-        return;
+      } else if (e.message.content.startsWith('_') &&
+          !e.message.content.startsWith('__')) {
+        _processCommands(e);
+      } else {
+        _addMessage(e.message);
+        // handle reply logic here
       }
-
-      _addMessage(e.message);
     });
 
     bot.onReady.listen((_) {
@@ -73,6 +70,11 @@ class Huldra {
   }
 
   Future<bool> _addMessage(Message m) async {
+    if (m.author.bot) {
+      print('Skipping bot message ${m.id.id}');
+      return false;
+    }
+
     var message = tables.Message(
         id: m.id.toString(),
         guild: m.guild.id.toString(),
@@ -133,16 +135,90 @@ class Huldra {
   void _processCommands(MessageEvent e) {
     if (e.message.content.startsWith('_fetch') &&
         e.message.author.id.id == '96407239232884736') {
-      var arguments = e.message.content.split(' ').removeAt(0);
+      var arguments = e.message.content.split(' ')..removeAt(0);
       if (arguments.isNotEmpty) {
-        switch (arguments.length) {
-          case 1:
+        _fetchMessages(Snowflake(arguments[0]));
+      } else {
+        // reply with error
+      }
+    } else if (e.message.content.startsWith('_trainall') &&
+        e.message.author.id.id == '96407239232884736') {
+      _trainAll();
+    }
+  }
+
+  void _fetchMessages(Snowflake from) async {
+    print('Fetching messages after ${from.id}');
+    var channels = (bot.channels
+        .find((c) => c.runtimeType == TextChannel)
+        .toList()
+        .cast<TextChannel>());
+
+    var countAdded = 0;
+
+    for (var i = 0; i < channels.length; i++) {
+      var channel = channels[i];
+      var to = (await channel.getMessages(limit: 1).first)?.id;
+      var messages = <Message>[];
+      var lastId = from;
+
+      if (to != null) {
+        while (true) {
+          var messageSubset =
+              await channel.getMessages(limit: 100, after: lastId).toList();
+          messageSubset.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+          messages.addAll(messageSubset);
+          lastId = messageSubset.last.id;
+
+          if (messageSubset.firstWhere(
+                (m) => m.id == to,
+                orElse: () => null,
+              ) !=
+              null) {
             break;
-          case 2:
-            break;
-          default:
+          }
+          print(
+              'Fetched ${messages.length} messages up to ${messageSubset.last.createdAt}...');
+          await Future.delayed(Duration(milliseconds: 300));
+        }
+      }
+
+      countAdded += messages.length;
+      messages.forEach((m) => _addMessage(m));
+      print('Fetched ${messages.length} messages from channel ${channel.name}');
+    }
+
+    print('Fetched all $countAdded messages from ${channels.length} channels.');
+  }
+
+  void _trainAll() async {
+    var messages = await Injector.appInstance
+        .getDependency<tables.Knowledgebase>()
+        .allMessages;
+    var words =
+        messages.map((m) => m.content.split(' ')).expand((w) => w).toList();
+
+    var wordCounts = <String, int>{};
+
+    for (var word in words) {
+      if (word != '') {
+        if (wordCounts.containsKey(word)) {
+          wordCounts[word] += 1;
+        } else {
+          wordCounts[word] = 1;
         }
       }
     }
+
+    var mostCommon = wordCounts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    print(
+        'Extracted ${wordCounts.length} words from ${messages.length} messages');
+
+    var top50 =
+        mostCommon.getRange(0, 50).map((m) => '${m.key}: ${m.value}').toList();
+
+    top50.forEach((w) => print(w));
   }
 }
