@@ -173,15 +173,18 @@ class Huldra {
               await channel.getMessages(limit: 100, after: lastId).toList();
           messageSubset.sort((a, b) => a.createdAt.compareTo(b.createdAt));
           messages.addAll(messageSubset);
-          lastId = messageSubset.last.id;
 
           if (messageSubset.firstWhere(
-                (m) => m.id == to,
-                orElse: () => null,
-              ) !=
-              null) {
+                    (m) => m.id == to,
+                    orElse: () => null,
+                  ) !=
+                  null ||
+              messageSubset.isEmpty) {
             break;
           }
+
+          lastId = messageSubset.last.id;
+
           print(
               'Fetched ${messages.length} messages up to ${messageSubset.last.createdAt}...');
           await Future.delayed(Duration(milliseconds: 300));
