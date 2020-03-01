@@ -1,8 +1,10 @@
 import 'dart:ffi';
 import 'dart:io';
 
+import 'package:hive/hive.dart';
 import 'package:huldra/huldra.dart';
-import 'package:huldra/tables.dart';
+import 'package:huldra/schema/tables.dart';
+import 'package:huldra/markov/word.dart';
 import 'package:injector/injector.dart';
 import 'package:moor_ffi/moor_ffi.dart';
 import 'package:moor_ffi/open_helper.dart';
@@ -24,7 +26,7 @@ void main() async {
     injector.registerSingleton<YamlConfig>((_) => result);
   });
 
-  injector.registerSingleton<Knowledgebase>((_) {
+  injector.registerSingleton<RawData>((_) {
     if (Platform.isWindows) {
       open.overrideFor(OperatingSystem.windows, () {
         return DynamicLibrary.open('${basePath}/sqlite3.dll');
@@ -32,8 +34,11 @@ void main() async {
     }
     var kbFile = File('${basePath}/kb.sqlite');
 
-    return Knowledgebase(VmDatabase(kbFile));
+    return RawData(VmDatabase(kbFile));
   });
+
+  // init Hive storage
+  await Hive.init(basePath);
 
   // initialize bot
   Huldra();

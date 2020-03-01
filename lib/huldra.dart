@@ -1,9 +1,11 @@
+import 'package:hive/hive.dart';
+import 'package:huldra/markov/markov.dart';
 import 'package:injector/injector.dart';
 import 'package:moor_ffi/database.dart';
 import 'package:nyxx/Vm.dart';
 import 'package:nyxx/nyxx.dart';
 import 'package:yaml_config/yaml_config.dart';
-import 'package:huldra/tables.dart' as tables;
+import 'package:huldra/schema/tables.dart' as tables;
 
 class Huldra {
   Nyxx bot;
@@ -29,6 +31,9 @@ class Huldra {
     bot.onReady.listen((_) {
       print('Huldra is awake...');
     });
+
+    Hive.openBox('metadata');
+    Hive.openBox('kb');
 
     // bot.onReady.listen((data) async {
     //   var channels = (bot.channels
@@ -108,7 +113,7 @@ class Huldra {
     var error = false;
 
     await Injector.appInstance
-        .getDependency<tables.Knowledgebase>()
+        .getDependency<tables.RawData>()
         .insertMessage(message, attachments, messageAttachments)
         .then(
       (result) => print('Added message ${message.id} to db.'),
@@ -192,33 +197,48 @@ class Huldra {
   }
 
   void _trainAll() async {
-    var messages = await Injector.appInstance
-        .getDependency<tables.Knowledgebase>()
-        .allMessages;
-    var words =
-        messages.map((m) => m.content.split(' ')).expand((w) => w).toList();
+    var metadata = Hive.box('metadata');
+    var kb = Hive.box('kb');
 
-    var wordCounts = <String, int>{};
+    await metadata.clear();
+    await kb.clear();
 
-    for (var word in words) {
-      if (word != '') {
-        if (wordCounts.containsKey(word)) {
-          wordCounts[word] += 1;
-        } else {
-          wordCounts[word] = 1;
-        }
-      }
+    var markov = Markov();
+    await metadata.put('markov', markov);
+
+    var messages =
+        await Injector.appInstance.getDependency<tables.RawData>().allMessages;
+
+    for (var message in messages) {
+      var words = message.content.split(' ')..removeWhere((word) => word == '');
+
+      markov.train(words);
     }
 
-    var mostCommon = wordCounts.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    // var words =
+    //     messages.map((m) => m.content.split(' ')).expand((w) => w).toList();
 
-    print(
-        'Extracted ${wordCounts.length} words from ${messages.length} messages');
+    // var wordCounts = <String, int>{};
 
-    var top50 =
-        mostCommon.getRange(0, 50).map((m) => '${m.key}: ${m.value}').toList();
+    // for (var word in words) {
+    //   if (word != '') {
+    //     if (wordCounts.containsKey(word)) {
+    //       wordCounts[word] += 1;
+    //     } else {
+    //       wordCounts[word] = 1;
+    //     }
+    //   }
+    // }
 
-    top50.forEach((w) => print(w));
+    // var mostCommon = wordCounts.entries.toList()
+    //   ..sort((a, b) => b.value.compareTo(a.value));
+
+    // print(
+    //     'Extracted ${wordCounts.length} words from ${messages.length} messages');
+
+    // var top50 =
+    //     mostCommon.getRange(0, 50).map((m) => '${m.key}: ${m.value}').toList();
+
+    // top50.forEach((w) => print(w));
   }
 }
