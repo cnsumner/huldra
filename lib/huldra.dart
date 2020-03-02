@@ -1,5 +1,6 @@
 import 'package:hive/hive.dart';
 import 'package:huldra/markov/markov.dart';
+import 'package:huldra/markov/word.dart';
 import 'package:injector/injector.dart';
 import 'package:moor_ffi/database.dart';
 import 'package:nyxx/Vm.dart';
@@ -32,8 +33,10 @@ class Huldra {
       print('Huldra is awake...');
     });
 
-    Hive.openBox('metadata');
-    Hive.openBox('kb');
+    Hive.openBox('metadata').then((_) => print('Metadata loaded.'));
+    Hive.openBox<Word>('kb',
+            compactionStrategy: (entries, deleted) => deleted > 100)
+        .then((_) => print('Knowledgebase loaded.'));
 
     // bot.onReady.listen((data) async {
     //   var channels = (bot.channels
@@ -149,6 +152,16 @@ class Huldra {
     } else if (e.message.content.startsWith('_trainall') &&
         e.message.author.id.id == '96407239232884736') {
       _trainAll();
+    } else if (e.message.content.startsWith('_query')) {
+      var arguments = e.message.content.split(' ')..removeAt(0);
+      if (arguments.isNotEmpty && arguments.length == 1) {
+        e.message.reply(content: _query(arguments[0]), mention: false);
+      } else {
+        e.message.reply(
+          content: 'Word not specified. Usage: _query [word]',
+          mention: false,
+        );
+      }
     }
   }
 
@@ -201,7 +214,7 @@ class Huldra {
 
   void _trainAll() async {
     var metadata = Hive.box('metadata');
-    var kb = Hive.box('kb');
+    var kb = Hive.box<Word>('kb');
 
     await metadata.clear();
     await kb.clear();
@@ -217,6 +230,9 @@ class Huldra {
 
       markov.train(words);
     }
+
+    print(
+        'Trained on ${markov.wordCount} words from ${markov.msgCount} messages');
 
     // var words =
     //     messages.map((m) => m.content.split(' ')).expand((w) => w).toList();
@@ -243,5 +259,14 @@ class Huldra {
     //     mostCommon.getRange(0, 50).map((m) => '${m.key}: ${m.value}').toList();
 
     // top50.forEach((w) => print(w));
+  }
+
+  String _query(String word) {
+    var kb = Hive.box<Word>('kb');
+
+    var words = kb.values
+        .where((value) => value.word.toLowerCase() == word.toLowerCase());
+
+    return 'Results:' + words.map((word) => word.toString()).join();
   }
 }

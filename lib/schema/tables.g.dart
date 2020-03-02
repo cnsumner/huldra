@@ -806,8 +806,8 @@ class $MessageAttachmentsTable extends MessageAttachments
   }
 }
 
-abstract class _$Knowledgebase extends GeneratedDatabase {
-  _$Knowledgebase(QueryExecutor e) : super(SqlTypeSystem.defaultInstance, e);
+abstract class _$RawData extends GeneratedDatabase {
+  _$RawData(QueryExecutor e) : super(SqlTypeSystem.defaultInstance, e);
   $MessagesTable _messages;
   $MessagesTable get messages => _messages ??= $MessagesTable(this);
   $AttachmentsTable _attachments;

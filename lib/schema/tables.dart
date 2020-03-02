@@ -36,7 +36,7 @@ class MessageAttachments extends Table {
 }
 
 @UseMoor(tables: [Messages, Attachments, MessageAttachments])
-class RawData extends _$Knowledgebase {
+class RawData extends _$RawData {
   RawData(QueryExecutor e) : super(e);
 
   @override

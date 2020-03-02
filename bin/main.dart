@@ -3,8 +3,9 @@ import 'dart:io';
 
 import 'package:hive/hive.dart';
 import 'package:huldra/huldra.dart';
-import 'package:huldra/schema/tables.dart';
+import 'package:huldra/markov/markov.dart';
 import 'package:huldra/markov/word.dart';
+import 'package:huldra/schema/tables.dart';
 import 'package:injector/injector.dart';
 import 'package:moor_ffi/moor_ffi.dart';
 import 'package:moor_ffi/open_helper.dart';
@@ -39,6 +40,8 @@ void main() async {
 
   // init Hive storage
   await Hive.init(basePath);
+  Hive.registerAdapter(MarkovAdapter());
+  Hive.registerAdapter(WordAdapter());
 
   // initialize bot
   Huldra();
