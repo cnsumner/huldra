@@ -74,4 +74,77 @@ class Markov extends HiveObject {
       }
     }
   }
+
+  String generate(List<String> tokens) {
+    var kb = Hive.box<Word>('kb');
+    var rand = Random(DateTime.now().millisecondsSinceEpoch);
+
+    Word anchor;
+
+    if (tokens.isNotEmpty) {
+      var words = <double, Word>{};
+
+      tokens.forEach((token) {
+        var word = kb.get(sha1.convert(utf8.encode(token)).toString());
+        words[_tfidf(word, tokens.length,
+            tokens.where((t) => t == word.word).length)] = word;
+      });
+
+      var sumOfWeights = words.keys.fold<double>(0, (p, e) => p + e);
+
+      var r = rand.nextDouble() * sumOfWeights;
+
+      for (var key in words.keys) {
+        r -= key;
+
+        if (r <= 0) {
+          anchor = words[key];
+          break;
+        }
+      }
+    } else {
+      // TODO: get a random word in the event that we don't have any tokens
+      anchor = kb.get(sha1.convert(utf8.encode('mariodude')).toString());
+    }
+
+    var prefixWords = <Word>[];
+    var prefixCount = anchor.randomDistFromHead(rand.nextDouble());
+
+    if (prefixCount > 0) {
+      prefixWords.add(anchor.randomPrefix(rand.nextDouble()));
+      prefixCount--;
+    }
+
+    while (prefixCount > 0) {
+      if (prefixWords.first.prefixes.isNotEmpty) {
+        var prefix = prefixWords.first.randomPrefix(rand.nextDouble());
+        prefixWords.insert(0, prefix);
+      } else {
+        prefixCount = 0;
+        break;
+      }
+
+      prefixCount--;
+    }
+
+    var suffixWords = <Word>[];
+    var suffixCount = anchor.randomDistFromTail(rand.nextDouble());
+
+    if (suffixCount > 0) {
+      suffixWords.add(anchor.randomSuffix(rand.nextDouble()));
+      suffixCount--;
+    }
+
+    while (suffixCount > 0) {
+      if (suffixWords.last.suffixes.isNotEmpty) {
+        var suffix = suffixWords.last.randomSuffix(rand.nextDouble());
+        suffixWords.add(suffix);
+      } else {
+        suffixCount = 0;
+        break;
+      }
+    }
+
+    return '${prefixWords.map((w) => w.word).toList().join(' ')} ${anchor.word} ${suffixWords.map((w) => w.word).toList().join(' ')}';
+  }
 }

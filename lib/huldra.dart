@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:hive/hive.dart';
 import 'package:huldra/markov/markov.dart';
 import 'package:huldra/markov/word.dart';
@@ -16,7 +18,7 @@ class Huldra {
 
     bot = NyxxVm(_config.getString('discordToken'));
 
-    bot.onMessageReceived.listen((MessageEvent e) {
+    bot.onMessageReceived.listen((MessageEvent e) async {
       if (e.message.author.bot ||
           (e.message.content.isEmpty && e.message.attachments.isEmpty)) {
         print('Ignoring bot or empty message: ${e.message.id.id}');
@@ -24,8 +26,22 @@ class Huldra {
           !e.message.content.startsWith('__')) {
         _processCommands(e);
       } else {
-        _addMessage(e.message);
-        // handle reply logic here
+        await _addMessage(e.message).whenComplete(() async {
+          if (e.message.channel.id.id == '96407444506300416') {
+            var metadata = Hive.box('metadata');
+            Markov markov = metadata.get('markov');
+
+            if (markov == null) {
+              markov = Markov();
+              await metadata.put('markov', markov);
+            }
+
+            var reply = markov.generate(e.message.content.split(' ')
+              ..removeWhere((word) => word == ''));
+
+            await e.message.reply(content: reply, mention: false);
+          }
+        });
       }
     });
 
@@ -37,44 +53,6 @@ class Huldra {
     Hive.openBox<Word>('kb',
             compactionStrategy: (entries, deleted) => deleted > 100)
         .then((_) => print('Knowledgebase loaded.'));
-
-    // bot.onReady.listen((data) async {
-    //   var channels = (bot.channels
-    //       .find((c) => c.runtimeType == TextChannel)
-    //       .toList()
-    //       .cast<TextChannel>());
-
-    //   var results = channels.map((channel) async {
-    //     var messages = await (await channel.getMessages(
-    //             after: Snowflake('465587079485849610')))
-    //         .toList();
-
-    //     var added = 0;
-    //     var skipped = 0;
-
-    //     await messages.forEach((m) async {
-    //       if (m.author.bot || (m.content.isEmpty && m.attachments.isEmpty)) {
-    //         return;
-    //       }
-
-    //       var result = await addMessage(m);
-
-    //       if (result) {
-    //         added++;
-    //       } else {
-    //         skipped++;
-    //       }
-    //     });
-
-    //     return 'Fetching channel ${channel.name}\r\n- added $added\r\n- skipped $skipped';
-    //   });
-
-    //   (await Future.wait<String>(results)).forEach((f) => print(f));
-
-    //   // await channels.forEach((channel) async {
-    //   //   // var lastMessage = await channel.getMessages(limit: 1).first;
-    //   // });
-    // });
   }
 
   Future<bool> _addMessage(Message m) async {
@@ -119,7 +97,7 @@ class Huldra {
         .getDependency<tables.RawData>()
         .insertMessage(message, attachments, messageAttachments)
         .then(
-      (result) => print('Added message ${message.id} to db.'),
+      (result) => print('Added message ${message.id} to db...'),
       onError: (e) {
         if (e.runtimeType == SqliteException &&
             (e as SqliteException)
@@ -136,6 +114,21 @@ class Huldra {
     if (error) {
       return false;
     } else {
+      var metadata = Hive.box('metadata');
+      Markov markov = metadata.get('markov');
+
+      if (markov == null) {
+        markov = Markov();
+        await metadata.put('markov', markov);
+      }
+
+      markov
+          .train(message.content.split(' ')..removeWhere((word) => word == ''));
+
+      await markov.save();
+
+      print('and trained.');
+
       return true;
     }
   }
@@ -230,6 +223,8 @@ class Huldra {
 
       markov.train(words);
     }
+
+    await markov.save();
 
     print(
         'Trained on ${markov.wordCount} words from ${markov.msgCount} messages');

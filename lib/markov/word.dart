@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:hive/hive.dart';
 
 part 'word.g.dart';
@@ -41,6 +43,60 @@ class Word extends HiveObject {
   int msgOccurances = 0;
 
   Word(this.word);
+
+  /// Performs a weighted random selection on [map] using [r] as the random value
+  Word _weightedRandomWordSelection(double r, Map<String, int> map) {
+    if (map.isNotEmpty) {
+      var kb = Hive.box<Word>('kb');
+      var sumOfWeights = map.values.fold(0, (prev, element) => prev + element);
+
+      r = r * sumOfWeights;
+
+      for (var key in map.keys) {
+        r -= map[key];
+
+        if (r <= 0) {
+          return kb.get(key);
+        }
+      }
+    }
+
+    return null;
+  }
+
+  int _weightedRandomDistSelection(double r, Map<int, int> map) {
+    if (map.isNotEmpty) {
+      var sumOfWeights = map.values.fold(0, (prev, element) => prev + element);
+
+      r = r * sumOfWeights;
+
+      for (var key in map.keys) {
+        r -= map[key];
+
+        if (r <= 0) {
+          return key;
+        }
+      }
+    }
+  }
+
+  /// Performs a weighted random selection on [prefixes] using [r] as the random value
+  Word randomPrefix(double r) {
+    return _weightedRandomWordSelection(r, prefixes);
+  }
+
+  /// Performs a weighted random selection on [suffixes] using [r] as the random value
+  Word randomSuffix(double r) {
+    return _weightedRandomWordSelection(r, suffixes);
+  }
+
+  int randomDistFromHead(double r) {
+    return _weightedRandomDistSelection(r, distFromHead);
+  }
+
+  int randomDistFromTail(double r) {
+    return _weightedRandomDistSelection(r, distFromTail);
+  }
 
   @override
   String toString() {
