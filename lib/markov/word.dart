@@ -66,12 +66,13 @@ class Word extends HiveObject {
 
   int _weightedRandomDistSelection(double r, Map<int, int> map) {
     if (map.isNotEmpty) {
-      var sumOfWeights = map.values.fold(0, (prev, element) => prev + element);
+      var sumOfWeights =
+          map.values.fold(0, (prev, element) => prev + log(element));
 
       r = r * sumOfWeights;
 
       for (var key in map.keys) {
-        r -= map[key];
+        r -= log(map[key]);
 
         if (r <= 0) {
           return key;

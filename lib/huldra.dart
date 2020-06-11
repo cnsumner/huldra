@@ -27,20 +27,20 @@ class Huldra {
         _processCommands(e);
       } else {
         await _addMessage(e.message).whenComplete(() async {
-          if (e.message.channel.id.id == '96407444506300416') {
-            var metadata = Hive.box('metadata');
-            Markov markov = metadata.get('markov');
+          // if (e.message.channel.id.id == '196706413169344512') {
+          var metadata = Hive.box('metadata');
+          Markov markov = metadata.get('markov');
 
-            if (markov == null) {
-              markov = Markov();
-              await metadata.put('markov', markov);
-            }
-
-            var reply = markov.generate(e.message.content.split(' ')
-              ..removeWhere((word) => word == ''));
-
-            await e.message.reply(content: reply, mention: false);
+          if (markov == null) {
+            markov = Markov();
+            await metadata.put('markov', markov);
           }
+
+          var reply = markov.generate(
+              e.message.content.split(' ')..removeWhere((word) => word == ''));
+
+          await e.message.reply(content: reply, mention: false);
+          // }
         });
       }
     });
@@ -192,8 +192,19 @@ class Huldra {
           lastId = messageSubset.last.id;
 
           print(
-              'Fetched ${messages.length} messages up to ${messageSubset.last.createdAt}...');
+              'Fetched ${countAdded + messages.length} messages up to ${messageSubset.last.createdAt}...');
           await Future.delayed(Duration(milliseconds: 300));
+
+          if (messages.length >= 10000) {
+            print('Buffer full, writing 10k messages to db.');
+
+            for (var m = 0; m < messages.length; m++) {
+              await _addMessage(messages[m]);
+            }
+
+            countAdded += messages.length;
+            messages.clear();
+          }
         }
       }
 

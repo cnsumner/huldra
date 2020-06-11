@@ -133,17 +133,30 @@ class Markov extends HiveObject {
     if (suffixCount > 0) {
       suffixWords.add(anchor.randomSuffix(rand.nextDouble()));
       suffixCount--;
-    }
 
-    while (suffixCount > 0) {
-      if (suffixWords.last.suffixes.isNotEmpty) {
+      while (suffixWords.last.suffixes.isNotEmpty) {
+        // if (suffixCount > 0) {
+        suffixCount--;
+        // }
+
         var suffix = suffixWords.last.randomSuffix(rand.nextDouble());
         suffixWords.add(suffix);
-      } else {
-        suffixCount = 0;
-        break;
+
+        if (suffixCount <= -5 && suffix.distFromTail.containsKey(0)) {
+          break;
+        }
       }
     }
+
+    // while (suffixCount > 0) {
+    //   if (suffixWords.last.suffixes.isNotEmpty) {
+    //     var suffix = suffixWords.last.randomSuffix(rand.nextDouble());
+    //     suffixWords.add(suffix);
+    //   } else {
+    //     suffixCount = 0;
+    //     break;
+    //   }
+    // }
 
     return '${prefixWords.map((w) => w.word).toList().join(' ')} ${anchor.word} ${suffixWords.map((w) => w.word).toList().join(' ')}';
   }
