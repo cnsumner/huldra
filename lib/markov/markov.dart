@@ -72,6 +72,8 @@ class Markov extends HiveObject {
         word.suffixes
             .update(suffixKey, (value) => value + 1, ifAbsent: () => 1);
       }
+
+      await word.save();
     }
   }
 
@@ -103,8 +105,7 @@ class Markov extends HiveObject {
         }
       }
     } else {
-      // TODO: get a random word in the event that we don't have any tokens
-      anchor = kb.get(sha1.convert(utf8.encode('mariodude')).toString());
+      anchor = kb.getAt(rand.nextInt(kb.length));
     }
 
     var prefixWords = <Word>[];

@@ -8,13 +8,13 @@ part of 'word.dart';
 
 class WordAdapter extends TypeAdapter<Word> {
   @override
-  final typeId = 0;
+  final int typeId = 0;
 
   @override
   Word read(BinaryReader reader) {
-    var numOfFields = reader.readByte();
-    var fields = <int, dynamic>{
-      for (var i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return Word(
       fields[0] as String,
@@ -46,4 +46,14 @@ class WordAdapter extends TypeAdapter<Word> {
       ..writeByte(6)
       ..write(obj.msgOccurances);
   }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is WordAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
 }

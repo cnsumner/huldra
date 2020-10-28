@@ -7,8 +7,8 @@ import 'package:huldra/markov/markov.dart';
 import 'package:huldra/markov/word.dart';
 import 'package:huldra/schema/tables.dart';
 import 'package:injector/injector.dart';
-import 'package:moor_ffi/moor_ffi.dart';
-import 'package:moor_ffi/open_helper.dart';
+import 'package:moor/ffi.dart';
+import 'package:sqlite3/open.dart';
 import 'package:yaml_config/yaml_config.dart';
 
 // 07/01/2018

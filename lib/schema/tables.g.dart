@@ -40,6 +40,49 @@ class Message extends DataClass implements Insertable<Message> {
           .mapFromDatabaseResponse(data['${effectivePrefix}timestamp']),
     );
   }
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (!nullToAbsent || id != null) {
+      map['id'] = Variable<String>(id);
+    }
+    if (!nullToAbsent || author != null) {
+      map['author'] = Variable<String>(author);
+    }
+    if (!nullToAbsent || guild != null) {
+      map['guild'] = Variable<String>(guild);
+    }
+    if (!nullToAbsent || channel != null) {
+      map['channel'] = Variable<String>(channel);
+    }
+    if (!nullToAbsent || content != null) {
+      map['content'] = Variable<String>(content);
+    }
+    if (!nullToAbsent || timestamp != null) {
+      map['timestamp'] = Variable<DateTime>(timestamp);
+    }
+    return map;
+  }
+
+  MessagesCompanion toCompanion(bool nullToAbsent) {
+    return MessagesCompanion(
+      id: id == null && nullToAbsent ? const Value.absent() : Value(id),
+      author:
+          author == null && nullToAbsent ? const Value.absent() : Value(author),
+      guild:
+          guild == null && nullToAbsent ? const Value.absent() : Value(guild),
+      channel: channel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(channel),
+      content: content == null && nullToAbsent
+          ? const Value.absent()
+          : Value(content),
+      timestamp: timestamp == null && nullToAbsent
+          ? const Value.absent()
+          : Value(timestamp),
+    );
+  }
+
   factory Message.fromJson(Map<String, dynamic> json,
       {ValueSerializer serializer}) {
     serializer ??= moorRuntimeOptions.defaultSerializer;
@@ -63,26 +106,6 @@ class Message extends DataClass implements Insertable<Message> {
       'content': serializer.toJson<String>(content),
       'timestamp': serializer.toJson<DateTime>(timestamp),
     };
-  }
-
-  @override
-  MessagesCompanion createCompanion(bool nullToAbsent) {
-    return MessagesCompanion(
-      id: id == null && nullToAbsent ? const Value.absent() : Value(id),
-      author:
-          author == null && nullToAbsent ? const Value.absent() : Value(author),
-      guild:
-          guild == null && nullToAbsent ? const Value.absent() : Value(guild),
-      channel: channel == null && nullToAbsent
-          ? const Value.absent()
-          : Value(channel),
-      content: content == null && nullToAbsent
-          ? const Value.absent()
-          : Value(content),
-      timestamp: timestamp == null && nullToAbsent
-          ? const Value.absent()
-          : Value(timestamp),
-    );
   }
 
   Message copyWith(
@@ -162,6 +185,24 @@ class MessagesCompanion extends UpdateCompanion<Message> {
         channel = Value(channel),
         content = Value(content),
         timestamp = Value(timestamp);
+  static Insertable<Message> custom({
+    Expression<String> id,
+    Expression<String> author,
+    Expression<String> guild,
+    Expression<String> channel,
+    Expression<String> content,
+    Expression<DateTime> timestamp,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (author != null) 'author': author,
+      if (guild != null) 'guild': guild,
+      if (channel != null) 'channel': channel,
+      if (content != null) 'content': content,
+      if (timestamp != null) 'timestamp': timestamp,
+    });
+  }
+
   MessagesCompanion copyWith(
       {Value<String> id,
       Value<String> author,
@@ -177,6 +218,43 @@ class MessagesCompanion extends UpdateCompanion<Message> {
       content: content ?? this.content,
       timestamp: timestamp ?? this.timestamp,
     );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (author.present) {
+      map['author'] = Variable<String>(author.value);
+    }
+    if (guild.present) {
+      map['guild'] = Variable<String>(guild.value);
+    }
+    if (channel.present) {
+      map['channel'] = Variable<String>(channel.value);
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<DateTime>(timestamp.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MessagesCompanion(')
+          ..write('id: $id, ')
+          ..write('author: $author, ')
+          ..write('guild: $guild, ')
+          ..write('channel: $channel, ')
+          ..write('content: $content, ')
+          ..write('timestamp: $timestamp')
+          ..write(')'))
+        .toString();
   }
 }
 
@@ -266,41 +344,42 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
   @override
   final String actualTableName = 'messages';
   @override
-  VerificationContext validateIntegrity(MessagesCompanion d,
+  VerificationContext validateIntegrity(Insertable<Message> instance,
       {bool isInserting = false}) {
     final context = VerificationContext();
-    if (d.id.present) {
-      context.handle(_idMeta, id.isAcceptableValue(d.id.value, _idMeta));
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id'], _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
     }
-    if (d.author.present) {
-      context.handle(
-          _authorMeta, author.isAcceptableValue(d.author.value, _authorMeta));
+    if (data.containsKey('author')) {
+      context.handle(_authorMeta,
+          author.isAcceptableOrUnknown(data['author'], _authorMeta));
     } else if (isInserting) {
       context.missing(_authorMeta);
     }
-    if (d.guild.present) {
+    if (data.containsKey('guild')) {
       context.handle(
-          _guildMeta, guild.isAcceptableValue(d.guild.value, _guildMeta));
+          _guildMeta, guild.isAcceptableOrUnknown(data['guild'], _guildMeta));
     } else if (isInserting) {
       context.missing(_guildMeta);
     }
-    if (d.channel.present) {
+    if (data.containsKey('channel')) {
       context.handle(_channelMeta,
-          channel.isAcceptableValue(d.channel.value, _channelMeta));
+          channel.isAcceptableOrUnknown(data['channel'], _channelMeta));
     } else if (isInserting) {
       context.missing(_channelMeta);
     }
-    if (d.content.present) {
+    if (data.containsKey('content')) {
       context.handle(_contentMeta,
-          content.isAcceptableValue(d.content.value, _contentMeta));
+          content.isAcceptableOrUnknown(data['content'], _contentMeta));
     } else if (isInserting) {
       context.missing(_contentMeta);
     }
-    if (d.timestamp.present) {
+    if (data.containsKey('timestamp')) {
       context.handle(_timestampMeta,
-          timestamp.isAcceptableValue(d.timestamp.value, _timestampMeta));
+          timestamp.isAcceptableOrUnknown(data['timestamp'], _timestampMeta));
     } else if (isInserting) {
       context.missing(_timestampMeta);
     }
@@ -313,30 +392,6 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
   Message map(Map<String, dynamic> data, {String tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : null;
     return Message.fromData(data, _db, prefix: effectivePrefix);
-  }
-
-  @override
-  Map<String, Variable> entityToSql(MessagesCompanion d) {
-    final map = <String, Variable>{};
-    if (d.id.present) {
-      map['id'] = Variable<String, StringType>(d.id.value);
-    }
-    if (d.author.present) {
-      map['author'] = Variable<String, StringType>(d.author.value);
-    }
-    if (d.guild.present) {
-      map['guild'] = Variable<String, StringType>(d.guild.value);
-    }
-    if (d.channel.present) {
-      map['channel'] = Variable<String, StringType>(d.channel.value);
-    }
-    if (d.content.present) {
-      map['content'] = Variable<String, StringType>(d.content.value);
-    }
-    if (d.timestamp.present) {
-      map['timestamp'] = Variable<DateTime, DateTimeType>(d.timestamp.value);
-    }
-    return map;
   }
 
   @override
@@ -372,6 +427,42 @@ class Attachment extends DataClass implements Insertable<Attachment> {
           .mapFromDatabaseResponse(data['${effectivePrefix}filename']),
     );
   }
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (!nullToAbsent || id != null) {
+      map['id'] = Variable<String>(id);
+    }
+    if (!nullToAbsent || guild != null) {
+      map['guild'] = Variable<String>(guild);
+    }
+    if (!nullToAbsent || channel != null) {
+      map['channel'] = Variable<String>(channel);
+    }
+    if (!nullToAbsent || url != null) {
+      map['url'] = Variable<String>(url);
+    }
+    if (!nullToAbsent || filename != null) {
+      map['filename'] = Variable<String>(filename);
+    }
+    return map;
+  }
+
+  AttachmentsCompanion toCompanion(bool nullToAbsent) {
+    return AttachmentsCompanion(
+      id: id == null && nullToAbsent ? const Value.absent() : Value(id),
+      guild:
+          guild == null && nullToAbsent ? const Value.absent() : Value(guild),
+      channel: channel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(channel),
+      url: url == null && nullToAbsent ? const Value.absent() : Value(url),
+      filename: filename == null && nullToAbsent
+          ? const Value.absent()
+          : Value(filename),
+    );
+  }
+
   factory Attachment.fromJson(Map<String, dynamic> json,
       {ValueSerializer serializer}) {
     serializer ??= moorRuntimeOptions.defaultSerializer;
@@ -393,22 +484,6 @@ class Attachment extends DataClass implements Insertable<Attachment> {
       'url': serializer.toJson<String>(url),
       'filename': serializer.toJson<String>(filename),
     };
-  }
-
-  @override
-  AttachmentsCompanion createCompanion(bool nullToAbsent) {
-    return AttachmentsCompanion(
-      id: id == null && nullToAbsent ? const Value.absent() : Value(id),
-      guild:
-          guild == null && nullToAbsent ? const Value.absent() : Value(guild),
-      channel: channel == null && nullToAbsent
-          ? const Value.absent()
-          : Value(channel),
-      url: url == null && nullToAbsent ? const Value.absent() : Value(url),
-      filename: filename == null && nullToAbsent
-          ? const Value.absent()
-          : Value(filename),
-    );
   }
 
   Attachment copyWith(
@@ -476,6 +551,22 @@ class AttachmentsCompanion extends UpdateCompanion<Attachment> {
         channel = Value(channel),
         url = Value(url),
         filename = Value(filename);
+  static Insertable<Attachment> custom({
+    Expression<String> id,
+    Expression<String> guild,
+    Expression<String> channel,
+    Expression<String> url,
+    Expression<String> filename,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (guild != null) 'guild': guild,
+      if (channel != null) 'channel': channel,
+      if (url != null) 'url': url,
+      if (filename != null) 'filename': filename,
+    });
+  }
+
   AttachmentsCompanion copyWith(
       {Value<String> id,
       Value<String> guild,
@@ -489,6 +580,39 @@ class AttachmentsCompanion extends UpdateCompanion<Attachment> {
       url: url ?? this.url,
       filename: filename ?? this.filename,
     );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (guild.present) {
+      map['guild'] = Variable<String>(guild.value);
+    }
+    if (channel.present) {
+      map['channel'] = Variable<String>(channel.value);
+    }
+    if (url.present) {
+      map['url'] = Variable<String>(url.value);
+    }
+    if (filename.present) {
+      map['filename'] = Variable<String>(filename.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AttachmentsCompanion(')
+          ..write('id: $id, ')
+          ..write('guild: $guild, ')
+          ..write('channel: $channel, ')
+          ..write('url: $url, ')
+          ..write('filename: $filename')
+          ..write(')'))
+        .toString();
   }
 }
 
@@ -566,34 +690,36 @@ class $AttachmentsTable extends Attachments
   @override
   final String actualTableName = 'attachments';
   @override
-  VerificationContext validateIntegrity(AttachmentsCompanion d,
+  VerificationContext validateIntegrity(Insertable<Attachment> instance,
       {bool isInserting = false}) {
     final context = VerificationContext();
-    if (d.id.present) {
-      context.handle(_idMeta, id.isAcceptableValue(d.id.value, _idMeta));
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id'], _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
     }
-    if (d.guild.present) {
+    if (data.containsKey('guild')) {
       context.handle(
-          _guildMeta, guild.isAcceptableValue(d.guild.value, _guildMeta));
+          _guildMeta, guild.isAcceptableOrUnknown(data['guild'], _guildMeta));
     } else if (isInserting) {
       context.missing(_guildMeta);
     }
-    if (d.channel.present) {
+    if (data.containsKey('channel')) {
       context.handle(_channelMeta,
-          channel.isAcceptableValue(d.channel.value, _channelMeta));
+          channel.isAcceptableOrUnknown(data['channel'], _channelMeta));
     } else if (isInserting) {
       context.missing(_channelMeta);
     }
-    if (d.url.present) {
-      context.handle(_urlMeta, url.isAcceptableValue(d.url.value, _urlMeta));
+    if (data.containsKey('url')) {
+      context.handle(
+          _urlMeta, url.isAcceptableOrUnknown(data['url'], _urlMeta));
     } else if (isInserting) {
       context.missing(_urlMeta);
     }
-    if (d.filename.present) {
+    if (data.containsKey('filename')) {
       context.handle(_filenameMeta,
-          filename.isAcceptableValue(d.filename.value, _filenameMeta));
+          filename.isAcceptableOrUnknown(data['filename'], _filenameMeta));
     } else if (isInserting) {
       context.missing(_filenameMeta);
     }
@@ -606,27 +732,6 @@ class $AttachmentsTable extends Attachments
   Attachment map(Map<String, dynamic> data, {String tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : null;
     return Attachment.fromData(data, _db, prefix: effectivePrefix);
-  }
-
-  @override
-  Map<String, Variable> entityToSql(AttachmentsCompanion d) {
-    final map = <String, Variable>{};
-    if (d.id.present) {
-      map['id'] = Variable<String, StringType>(d.id.value);
-    }
-    if (d.guild.present) {
-      map['guild'] = Variable<String, StringType>(d.guild.value);
-    }
-    if (d.channel.present) {
-      map['channel'] = Variable<String, StringType>(d.channel.value);
-    }
-    if (d.url.present) {
-      map['url'] = Variable<String, StringType>(d.url.value);
-    }
-    if (d.filename.present) {
-      map['filename'] = Variable<String, StringType>(d.filename.value);
-    }
-    return map;
   }
 
   @override
@@ -652,6 +757,29 @@ class MessageAttachment extends DataClass
           .mapFromDatabaseResponse(data['${effectivePrefix}attachment_id']),
     );
   }
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (!nullToAbsent || messageId != null) {
+      map['message_id'] = Variable<String>(messageId);
+    }
+    if (!nullToAbsent || attachmentId != null) {
+      map['attachment_id'] = Variable<String>(attachmentId);
+    }
+    return map;
+  }
+
+  MessageAttachmentsCompanion toCompanion(bool nullToAbsent) {
+    return MessageAttachmentsCompanion(
+      messageId: messageId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(messageId),
+      attachmentId: attachmentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(attachmentId),
+    );
+  }
+
   factory MessageAttachment.fromJson(Map<String, dynamic> json,
       {ValueSerializer serializer}) {
     serializer ??= moorRuntimeOptions.defaultSerializer;
@@ -667,18 +795,6 @@ class MessageAttachment extends DataClass
       'messageId': serializer.toJson<String>(messageId),
       'attachmentId': serializer.toJson<String>(attachmentId),
     };
-  }
-
-  @override
-  MessageAttachmentsCompanion createCompanion(bool nullToAbsent) {
-    return MessageAttachmentsCompanion(
-      messageId: messageId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(messageId),
-      attachmentId: attachmentId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(attachmentId),
-    );
   }
 
   MessageAttachment copyWith({String messageId, String attachmentId}) =>
@@ -717,12 +833,43 @@ class MessageAttachmentsCompanion extends UpdateCompanion<MessageAttachment> {
     @required String attachmentId,
   })  : messageId = Value(messageId),
         attachmentId = Value(attachmentId);
+  static Insertable<MessageAttachment> custom({
+    Expression<String> messageId,
+    Expression<String> attachmentId,
+  }) {
+    return RawValuesInsertable({
+      if (messageId != null) 'message_id': messageId,
+      if (attachmentId != null) 'attachment_id': attachmentId,
+    });
+  }
+
   MessageAttachmentsCompanion copyWith(
       {Value<String> messageId, Value<String> attachmentId}) {
     return MessageAttachmentsCompanion(
       messageId: messageId ?? this.messageId,
       attachmentId: attachmentId ?? this.attachmentId,
     );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (messageId.present) {
+      map['message_id'] = Variable<String>(messageId.value);
+    }
+    if (attachmentId.present) {
+      map['attachment_id'] = Variable<String>(attachmentId.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MessageAttachmentsCompanion(')
+          ..write('messageId: $messageId, ')
+          ..write('attachmentId: $attachmentId')
+          ..write(')'))
+        .toString();
   }
 }
 
@@ -760,20 +907,21 @@ class $MessageAttachmentsTable extends MessageAttachments
   @override
   final String actualTableName = 'message_attachments';
   @override
-  VerificationContext validateIntegrity(MessageAttachmentsCompanion d,
+  VerificationContext validateIntegrity(Insertable<MessageAttachment> instance,
       {bool isInserting = false}) {
     final context = VerificationContext();
-    if (d.messageId.present) {
+    final data = instance.toColumns(true);
+    if (data.containsKey('message_id')) {
       context.handle(_messageIdMeta,
-          messageId.isAcceptableValue(d.messageId.value, _messageIdMeta));
+          messageId.isAcceptableOrUnknown(data['message_id'], _messageIdMeta));
     } else if (isInserting) {
       context.missing(_messageIdMeta);
     }
-    if (d.attachmentId.present) {
+    if (data.containsKey('attachment_id')) {
       context.handle(
           _attachmentIdMeta,
-          attachmentId.isAcceptableValue(
-              d.attachmentId.value, _attachmentIdMeta));
+          attachmentId.isAcceptableOrUnknown(
+              data['attachment_id'], _attachmentIdMeta));
     } else if (isInserting) {
       context.missing(_attachmentIdMeta);
     }
@@ -786,18 +934,6 @@ class $MessageAttachmentsTable extends MessageAttachments
   MessageAttachment map(Map<String, dynamic> data, {String tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : null;
     return MessageAttachment.fromData(data, _db, prefix: effectivePrefix);
-  }
-
-  @override
-  Map<String, Variable> entityToSql(MessageAttachmentsCompanion d) {
-    final map = <String, Variable>{};
-    if (d.messageId.present) {
-      map['message_id'] = Variable<String, StringType>(d.messageId.value);
-    }
-    if (d.attachmentId.present) {
-      map['attachment_id'] = Variable<String, StringType>(d.attachmentId.value);
-    }
-    return map;
   }
 
   @override

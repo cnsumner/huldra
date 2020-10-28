@@ -49,6 +49,17 @@ class RawData extends _$RawData {
   Future<List<MessageAttachment>> get allMessageAttachments =>
       select(messageAttachments).get();
 
+  Future<List<Message>> getPagedMessages(int pageSize, {String lastId = '0'}) {
+    var greaterThan = CustomExpression<bool>('Id > $lastId');
+
+    return (select(messages)
+          ..orderBy(
+              [(u) => OrderingTerm(expression: u.id, mode: OrderingMode.asc)])
+          ..where((tbl) => greaterThan)
+          ..limit(pageSize))
+        .get();
+  }
+
   Future<void> insertMessage(Message message, List<Attachment> attachmentList,
       List<MessageAttachment> messageAttachmentList) {
     return transaction(() async {

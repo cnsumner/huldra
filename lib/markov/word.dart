@@ -79,6 +79,8 @@ class Word extends HiveObject {
         }
       }
     }
+
+    return 0;
   }
 
   /// Performs a weighted random selection on [prefixes] using [r] as the random value

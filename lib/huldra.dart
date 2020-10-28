@@ -4,7 +4,7 @@ import 'package:hive/hive.dart';
 import 'package:huldra/markov/markov.dart';
 import 'package:huldra/markov/word.dart';
 import 'package:injector/injector.dart';
-import 'package:moor_ffi/database.dart';
+import 'package:moor/ffi.dart';
 import 'package:nyxx/Vm.dart';
 import 'package:nyxx/nyxx.dart';
 import 'package:yaml_config/yaml_config.dart';
@@ -25,9 +25,8 @@ class Huldra {
       } else if (e.message.content.startsWith('_') &&
           !e.message.content.startsWith('__')) {
         _processCommands(e);
-      } else {
+      } else if (e.message.content.startsWith('<@!674451490743779339>')) {
         await _addMessage(e.message).whenComplete(() async {
-          // if (e.message.channel.id.id == '196706413169344512') {
           var metadata = Hive.box('metadata');
           Markov markov = metadata.get('markov');
 
@@ -36,11 +35,47 @@ class Huldra {
             await metadata.put('markov', markov);
           }
 
-          var reply = markov.generate(
-              e.message.content.split(' ')..removeWhere((word) => word == ''));
+          var input = e.message.content.split(' ')
+            ..removeAt(0)
+            ..removeWhere((word) => word == '');
+
+          var reply = markov
+              .generate(input)
+              .replaceAll('<@!674451490743779339>', '')
+              .trim();
+
+          if (reply.compareTo(input.join(' ').trim()) == 0) {
+            reply = markov.generate([]);
+          }
 
           await e.message.reply(content: reply, mention: false);
-          // }
+        });
+      } else {
+        await _addMessage(e.message).whenComplete(() async {
+          var rand = Random(DateTime.now().millisecondsSinceEpoch);
+
+          if (rand.nextInt(101) > 80) {
+            // if (e.message.channel.id.id == '196706413169344512') {
+
+            var metadata = Hive.box('metadata');
+            Markov markov = metadata.get('markov');
+
+            if (markov == null) {
+              markov = Markov();
+              await metadata.put('markov', markov);
+            }
+
+            var reply = markov
+                .generate(e.message.content.split(' ')
+                  ..removeWhere((word) => word == ''))
+                .trim();
+
+            if (reply.compareTo(e.message.content) != 0) {
+              await e.message.reply(content: reply, mention: false);
+            }
+
+            // }
+          }
         });
       }
     });
@@ -49,10 +84,18 @@ class Huldra {
       print('Huldra is awake...');
     });
 
-    Hive.openBox('metadata').then((_) => print('Metadata loaded.'));
+    Hive.openBox('metadata').then((box) {
+      var markov = box.get('markov');
+
+      if (markov != null) {
+        print('Metadata loaded with ${markov.wordCount} words.');
+      } else {
+        print('Metadata loaded.');
+      }
+    });
     Hive.openBox<Word>('kb',
             compactionStrategy: (entries, deleted) => deleted > 100)
-        .then((_) => print('Knowledgebase loaded.'));
+        .then((kb) => print('Knowledgebase loaded with ${kb.length} words.'));
   }
 
   Future<bool> _addMessage(Message m) async {
@@ -122,12 +165,14 @@ class Huldra {
         await metadata.put('markov', markov);
       }
 
+      print('Training...');
+
       markov
           .train(message.content.split(' ')..removeWhere((word) => word == ''));
 
-      await markov.save();
-
-      print('and trained.');
+      await markov.save().then((_) {
+        print('Metadata saved.');
+      });
 
       return true;
     }
@@ -217,28 +262,73 @@ class Huldra {
   }
 
   void _trainAll() async {
+    // var metadata = Hive.box('metadata');
+    // var kb = Hive.box<Word>('kb');
+
+    // await metadata.clear();
+    // await kb.clear();
+
+    // var markov = Markov();
+    // await metadata.put('markov', markov);
+
+    // var messages =
+    //     await Injector.appInstance.getDependency<tables.RawData>().allMessages;
+
+    // for (var message in messages) {
+    //   var words = message.content.split(' ')..removeWhere((word) => word == '');
+
+    //   markov.train(words);
+    // }
+
+    // await markov.save();
+
+    // print(
+    //     'Trained on ${markov.wordCount} words from ${markov.msgCount} messages');
+
     var metadata = Hive.box('metadata');
     var kb = Hive.box<Word>('kb');
 
     await metadata.clear();
     await kb.clear();
 
-    var markov = Markov();
+    Markov markov = Markov();
+
     await metadata.put('markov', markov);
 
-    var messages =
-        await Injector.appInstance.getDependency<tables.RawData>().allMessages;
+    var count = 0;
 
-    for (var message in messages) {
-      var words = message.content.split(' ')..removeWhere((word) => word == '');
+    var messages = await Injector.appInstance
+        .getDependency<tables.RawData>()
+        .getPagedMessages(1000);
 
-      markov.train(words);
+    while (messages.isNotEmpty) {
+      for (var message in messages) {
+        var words = message.content.split(' ')
+          ..removeWhere((word) => word == '');
+
+        markov.train(words);
+      }
+
+      await Future.delayed(Duration(milliseconds: 100));
+
+      count += messages.length;
+
+      print('Trained on ${count} messages');
+
+      messages = await Injector.appInstance
+          .getDependency<tables.RawData>()
+          .getPagedMessages(1000, lastId: messages.last.id);
     }
 
-    await markov.save();
-
-    print(
-        'Trained on ${markov.wordCount} words from ${markov.msgCount} messages');
+    await markov.save().then((_) {
+      return metadata.close().then((_) {
+        return Hive.openBox('metadata').then((box) {
+          print(
+              'Trained on ${box.get('markov').wordCount} words from ${box.get('markov').msgCount} messages');
+          print('Kb now contains ${kb.length} words');
+        });
+      });
+    });
 
     // var words =
     //     messages.map((m) => m.content.split(' ')).expand((w) => w).toList();
