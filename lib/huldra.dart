@@ -8,6 +8,7 @@ import 'package:nyxx/Vm.dart';
 import 'package:nyxx/nyxx.dart';
 import 'package:yaml_config/yaml_config.dart';
 import 'package:huldra/schema/raw_data.dart' as tables;
+import 'package:huldra/extensions/word_extensions.dart';
 
 class Huldra {
   Nyxx bot;
@@ -41,7 +42,7 @@ class Huldra {
           }
 
           await e.message.reply(content: reply, mention: false);
-        });
+        }).catchError((error) => print(error));
       } else {
         await _addMessage(e.message).whenComplete(() async {
           var rand = Random(DateTime.now().millisecondsSinceEpoch);
@@ -133,9 +134,20 @@ class Huldra {
     if (error) {
       return false;
     } else {
-      Markov.train(
+      var kb = Injector.appInstance.getDependency<KnowledgeBase>();
+      var metadata = await kb.getMetadata();
+      var wordMap = <String, Word>{};
+      metadata = await Markov.train(
+          metadata,
+          wordMap,
           message.content.replaceFirst('<@!674451490743779339>', '').split(' ')
             ..removeWhere((word) => word == ''));
+
+      await kb.updateMetadata(metadata);
+      await kb.updateWords(wordMap.entries
+          .where((element) => element.key != null)
+          .map<Word>((entry) => entry.value)
+          .toList(growable: false));
 
       return true;
     }
@@ -156,8 +168,9 @@ class Huldra {
     } else if (e.message.content.startsWith('_query')) {
       var arguments = e.message.content.split(' ')..removeAt(0);
       if (arguments.isNotEmpty && arguments.length == 1) {
-        _query(arguments[0])
-            .then((value) => e.message.reply(content: value, mention: false));
+        _query(arguments[0]).then((value) {
+          e.message.reply(content: value, mention: false);
+        });
       } else {
         e.message.reply(
           content: 'Word not specified. Usage: _query [word]',
@@ -218,7 +231,8 @@ class Huldra {
       }
 
       countAdded += messages.length;
-      messages.forEach((m) => _addMessage(m));
+      await Future.wait(messages.map<Future<bool>>((m) => _addMessage(m)));
+
       print('Fetched ${messages.length} messages from channel ${channel.name}');
     }
 
@@ -260,18 +274,28 @@ class Huldra {
         .getPagedMessages(1000);
 
     while (messages.isNotEmpty) {
-      for (var message in messages) {
-        var words = message.content.split(' ')
-          ..removeWhere((word) => word == '');
+      var metadata = await kb.getMetadata();
+      var wordMap = <String, Word>{};
 
-        await Markov.train(words);
+      for (var message in messages) {
+        var tokens = message.content.split(' ')
+          ..removeWhere((token) => token == '');
+
+        metadata = await Markov.train(metadata, wordMap, tokens);
       }
 
-      await Future.delayed(Duration(milliseconds: 100));
+      await kb.updateWords(wordMap.entries
+          .where((element) => element.key != null)
+          .map<Word>((entry) => entry.value)
+          .toList(growable: false));
+
+      await kb.updateMetadata(metadata);
+
+      // await Future.delayed(Duration(milliseconds: 100));
 
       count += messages.length;
 
-      print('Trained on ${count} messages');
+      print('Trained ${metadata.wordCount} words from ${count} messages');
 
       messages = await Injector.appInstance
           .getDependency<tables.RawData>()
@@ -318,6 +342,12 @@ class Huldra {
 
     var words = await kb.queryWords(word);
 
-    return 'Results:' + words.map((word) => word.toString()).join();
+    var results = await Future.wait(words.map<Future<String>>((word) {
+      return word.toFormattedString();
+    }));
+
+    var formattedResults = results.join();
+
+    return 'Results: $formattedResults';
   }
 }

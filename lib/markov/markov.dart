@@ -27,24 +27,29 @@ class Markov {
   /// Train off of a sample array
   ///
   /// Trains the markov chain off of [tokens], converting them into [Word] objects
-  static void train(List<String> tokens) async {
+  static Future<MetaData> train(
+      MetaData metadata, Map<String, Word> wordMap, List<String> tokens) async {
     var kb = Injector.appInstance.getDependency<KnowledgeBase>();
-
-    var metadata = await kb.getMetadata();
 
     var _msgCount = metadata.msgCount + 1;
     var _wordCount = metadata.wordCount;
 
     var dupeCheck = <String, bool>{};
 
+    wordMap.addEntries((await kb.getWords(tokens
+            .map((token) => sha1.convert(utf8.encode(token)).toString())
+            .toList()))
+        .map((word) => MapEntry(word.wordHash, word)));
+
     for (var i = 0; i < tokens.length; i++) {
       var key = sha1.convert(utf8.encode(tokens[i])).toString();
-      var word = await kb.getWord(key);
+      Word word;
 
-      if (word == null) {
+      if (wordMap.containsKey(key)) {
+        word = wordMap[key];
+      } else {
         _wordCount++;
         word = WordExtensions.constructWord(key, tokens[i]);
-        // await kb.putWord(word);
       }
 
       var _totalOccurances = word.totalOccurances;
@@ -72,12 +77,22 @@ class Markov {
             .update(suffixKey, (value) => value + 1, ifAbsent: () => 1);
       }
 
-      await kb.updateWord(word.copyWith(
-          totalOccurances: _totalOccurances, msgOccurances: _msgOccurances));
+      wordMap[key] = word.copyWith(
+          totalOccurances: _totalOccurances, msgOccurances: _msgOccurances);
+
+      // await kb.updateWord(word.copyWith(
+      //     totalOccurances: _totalOccurances, msgOccurances: _msgOccurances));
     }
 
-    await kb.updateMetadata(
-        metadata.copyWith(msgCount: _msgCount, wordCount: _wordCount));
+    // await kb.updateWords(wordMap.entries
+    //     .where((element) => element.key != null)
+    //     .map<Word>((entry) => entry.value)
+    //     .toList(growable: false));
+
+    // await kb.updateMetadata(
+    //     metadata.copyWith(msgCount: _msgCount, wordCount: _wordCount));
+
+    return metadata.copyWith(msgCount: _msgCount, wordCount: _wordCount);
   }
 
   static Future<String> generate(List<String> tokens) async {
@@ -91,12 +106,17 @@ class Markov {
     if (tokens.isNotEmpty) {
       var words = <double, Word>{};
 
-      tokens.forEach((token) async {
-        var word =
-            await kb.getWord(sha1.convert(utf8.encode(token)).toString());
+      (await Future.wait<Word>(tokens.map<Future<Word>>((token) =>
+              kb.getWord(sha1.convert(utf8.encode(token)).toString()))))
+          .forEach((word) {
         words[_tfidf(metadata, word, tokens.length,
             tokens.where((t) => t == word.word).length)] = word;
       });
+
+      // tokens.forEach((token) async {
+      //   var word =
+      //       await kb.getWord(sha1.convert(utf8.encode(token)).toString());
+      // });
 
       var sumOfWeights = words.keys.fold<double>(0, (p, e) => p + e);
 

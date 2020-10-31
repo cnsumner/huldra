@@ -91,12 +91,20 @@ extension WordExtensions on Word {
       return suffixes[b].compareTo(suffixes[a]);
     });
 
+    var topPrefix = topPrefixes.isNotEmpty
+        ? (await kb.getWord(topPrefixes.first))?.word
+        : '';
+    var topSuffix = topSuffixes.isNotEmpty
+        ? (await kb.getWord(topSuffixes.first))?.word
+        : '';
+
     return '''```
 Word: $word
 Total usages: $totalOccurances
 Messages used in: $msgOccurances
-Top prefix: ${topPrefixes.isNotEmpty ? (await kb.getWord(topPrefixes.first))?.word : ''}
-Top Suffix: ${topSuffixes.isNotEmpty ? (await kb.getWord(topSuffixes.first))?.word : ''}
+Top prefix: $topPrefix
+Top Suffix: $topSuffix
+Example Usage: "$topPrefix $word $topSuffix"
 ```''';
   }
 }
