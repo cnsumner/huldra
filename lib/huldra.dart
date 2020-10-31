@@ -1,14 +1,13 @@
 import 'dart:math';
 
-import 'package:hive/hive.dart';
 import 'package:huldra/markov/markov.dart';
-import 'package:huldra/markov/word.dart';
+import 'package:huldra/schema/knowledge_base.dart';
 import 'package:injector/injector.dart';
 import 'package:moor/ffi.dart';
 import 'package:nyxx/Vm.dart';
 import 'package:nyxx/nyxx.dart';
 import 'package:yaml_config/yaml_config.dart';
-import 'package:huldra/schema/tables.dart' as tables;
+import 'package:huldra/schema/raw_data.dart' as tables;
 
 class Huldra {
   Nyxx bot;
@@ -17,6 +16,8 @@ class Huldra {
     var _config = Injector.appInstance.getDependency<YamlConfig>();
 
     bot = NyxxVm(_config.getString('discordToken'));
+
+    var kb = Injector.appInstance.getDependency<KnowledgeBase>();
 
     bot.onMessageReceived.listen((MessageEvent e) async {
       if (e.message.author.bot ||
@@ -27,25 +28,16 @@ class Huldra {
         _processCommands(e);
       } else if (e.message.content.startsWith('<@!674451490743779339>')) {
         await _addMessage(e.message).whenComplete(() async {
-          var metadata = Hive.box('metadata');
-          Markov markov = metadata.get('markov');
-
-          if (markov == null) {
-            markov = Markov();
-            await metadata.put('markov', markov);
-          }
-
           var input = e.message.content.split(' ')
             ..removeAt(0)
             ..removeWhere((word) => word == '');
 
-          var reply = markov
-              .generate(input)
+          var reply = (await Markov.generate(input))
               .replaceAll('<@!674451490743779339>', '')
               .trim();
 
           if (reply.compareTo(input.join(' ').trim()) == 0) {
-            reply = markov.generate([]);
+            reply = await Markov.generate([]);
           }
 
           await e.message.reply(content: reply, mention: false);
@@ -55,26 +47,16 @@ class Huldra {
           var rand = Random(DateTime.now().millisecondsSinceEpoch);
 
           if (rand.nextInt(101) > 80) {
-            // if (e.message.channel.id.id == '196706413169344512') {
-
-            var metadata = Hive.box('metadata');
-            Markov markov = metadata.get('markov');
-
-            if (markov == null) {
-              markov = Markov();
-              await metadata.put('markov', markov);
-            }
-
-            var reply = markov
-                .generate(e.message.content.split(' ')
-                  ..removeWhere((word) => word == ''))
+            var reply = (await Markov.generate(e.message.content.split(' ')
+                  ..removeWhere((word) => word == '')))
                 .trim();
 
             if (reply.compareTo(e.message.content) != 0) {
               await e.message.reply(content: reply, mention: false);
+            } else {
+              reply = await Markov.generate([]);
+              await e.message.reply(content: reply, mention: false);
             }
-
-            // }
           }
         });
       }
@@ -84,18 +66,12 @@ class Huldra {
       print('Huldra is awake...');
     });
 
-    Hive.openBox('metadata').then((box) {
-      var markov = box.get('markov');
-
-      if (markov != null) {
-        print('Metadata loaded with ${markov.wordCount} words.');
-      } else {
-        print('Metadata loaded.');
-      }
-    });
-    Hive.openBox<Word>('kb',
-            compactionStrategy: (entries, deleted) => deleted > 100)
-        .then((kb) => print('Knowledgebase loaded with ${kb.length} words.'));
+    kb.getMetadata().then(
+        (value) => print('Metadata loaded with ${value.wordCount} words.'));
+    kb
+        .countWords()
+        .getSingle()
+        .then((value) => print('Knowledgebase loaded with ${value} words.'));
   }
 
   Future<bool> _addMessage(Message m) async {
@@ -157,22 +133,9 @@ class Huldra {
     if (error) {
       return false;
     } else {
-      var metadata = Hive.box('metadata');
-      Markov markov = metadata.get('markov');
-
-      if (markov == null) {
-        markov = Markov();
-        await metadata.put('markov', markov);
-      }
-
-      print('Training...');
-
-      markov
-          .train(message.content.split(' ')..removeWhere((word) => word == ''));
-
-      await markov.save().then((_) {
-        print('Metadata saved.');
-      });
+      Markov.train(
+          message.content.replaceFirst('<@!674451490743779339>', '').split(' ')
+            ..removeWhere((word) => word == ''));
 
       return true;
     }
@@ -193,7 +156,8 @@ class Huldra {
     } else if (e.message.content.startsWith('_query')) {
       var arguments = e.message.content.split(' ')..removeAt(0);
       if (arguments.isNotEmpty && arguments.length == 1) {
-        e.message.reply(content: _query(arguments[0]), mention: false);
+        _query(arguments[0])
+            .then((value) => e.message.reply(content: value, mention: false));
       } else {
         e.message.reply(
           content: 'Word not specified. Usage: _query [word]',
@@ -285,15 +249,9 @@ class Huldra {
     // print(
     //     'Trained on ${markov.wordCount} words from ${markov.msgCount} messages');
 
-    var metadata = Hive.box('metadata');
-    var kb = Hive.box<Word>('kb');
+    var kb = Injector.appInstance.getDependency<KnowledgeBase>();
 
-    await metadata.clear();
-    await kb.clear();
-
-    Markov markov = Markov();
-
-    await metadata.put('markov', markov);
+    await kb.clearKnowledgeBase();
 
     var count = 0;
 
@@ -306,7 +264,7 @@ class Huldra {
         var words = message.content.split(' ')
           ..removeWhere((word) => word == '');
 
-        markov.train(words);
+        await Markov.train(words);
       }
 
       await Future.delayed(Duration(milliseconds: 100));
@@ -320,15 +278,13 @@ class Huldra {
           .getPagedMessages(1000, lastId: messages.last.id);
     }
 
-    await markov.save().then((_) {
-      return metadata.close().then((_) {
-        return Hive.openBox('metadata').then((box) {
-          print(
-              'Trained on ${box.get('markov').wordCount} words from ${box.get('markov').msgCount} messages');
-          print('Kb now contains ${kb.length} words');
-        });
-      });
-    });
+    await kb.getMetadata().then((value) => print(
+        'Trained on ${value.wordCount} words from ${value.msgCount} messages'));
+
+    await kb
+        .countWords()
+        .getSingle()
+        .then((value) => print('Kb now contains ${value} words'));
 
     // var words =
     //     messages.map((m) => m.content.split(' ')).expand((w) => w).toList();
@@ -357,11 +313,10 @@ class Huldra {
     // top50.forEach((w) => print(w));
   }
 
-  String _query(String word) {
-    var kb = Hive.box<Word>('kb');
+  Future<String> _query(String word) async {
+    var kb = Injector.appInstance.getDependency<KnowledgeBase>();
 
-    var words = kb.values
-        .where((value) => value.word.toLowerCase() == word.toLowerCase());
+    var words = await kb.queryWords(word);
 
     return 'Results:' + words.map((word) => word.toString()).join();
   }
