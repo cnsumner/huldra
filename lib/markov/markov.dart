@@ -36,13 +36,19 @@ class Markov {
 
     var dupeCheck = <String, bool>{};
 
-    wordMap.addEntries((await kb.getWords(tokens
-            .map((token) => sha1.convert(utf8.encode(token)).toString())
-            .toList()))
-        .map((word) => MapEntry(word.wordHash, word)));
+    var keys =
+        tokens.map((token) => sha1.convert(utf8.encode(token)).toString());
+
+    var words = (await kb
+        .getWords(keys.where((key) => !wordMap.containsKey(key)).toList()));
+
+    words.forEach((word) {
+      wordMap.putIfAbsent(word.wordHash, () => word);
+    });
 
     for (var i = 0; i < tokens.length; i++) {
-      var key = sha1.convert(utf8.encode(tokens[i])).toString();
+      var key = keys.elementAt(i);
+
       Word word;
 
       if (wordMap.containsKey(key)) {
@@ -58,6 +64,7 @@ class Markov {
       word.distFromHead.update(i, (value) => value + 1, ifAbsent: () => 1);
       word.distFromTail.update((tokens.length - 1) - i, (value) => value + 1,
           ifAbsent: () => 1);
+
       _totalOccurances++;
 
       dupeCheck.update(key, (value) => true, ifAbsent: () {

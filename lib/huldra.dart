@@ -269,17 +269,28 @@ class Huldra {
 
     var count = 0;
 
+    var pageSize = 1000;
+
     var messages = await Injector.appInstance
         .getDependency<tables.RawData>()
-        .getPagedMessages(1000);
+        .getPagedMessages(pageSize);
+
+    var stopwatch = Stopwatch();
+    var lastFreq;
+    var performanceBias = 0;
+    var direction = 1;
 
     while (messages.isNotEmpty) {
+      stopwatch.reset();
+      stopwatch.start();
       var metadata = await kb.getMetadata();
       var wordMap = <String, Word>{};
 
       for (var message in messages) {
-        var tokens = message.content.split(' ')
-          ..removeWhere((token) => token == '');
+        var tokens = message.content
+            .replaceFirst('<@!674451490743779339>', '')
+            .split(' ')
+              ..removeWhere((token) => token == '');
 
         metadata = await Markov.train(metadata, wordMap, tokens);
       }
@@ -297,9 +308,40 @@ class Huldra {
 
       print('Trained ${metadata.wordCount} words from ${count} messages');
 
+      var msgCount = messages.length;
+
       messages = await Injector.appInstance
           .getDependency<tables.RawData>()
-          .getPagedMessages(1000, lastId: messages.last.id);
+          .getPagedMessages(pageSize, lastId: messages.last.id);
+
+      stopwatch.stop();
+
+      var freq = msgCount / stopwatch.elapsedMilliseconds;
+
+      if (lastFreq == null) {
+        lastFreq = freq;
+        continue;
+      } else {
+        if (lastFreq > freq) {
+          // slowing down...
+          performanceBias -= performanceBias > -10 ? 1 : 0;
+        } else if (lastFreq < freq) {
+          // speeding up!
+          performanceBias += performanceBias < 2 ? 2 : 0;
+        }
+
+        direction *= performanceBias.sign == 0 ? 1 : performanceBias.sign;
+        print('Frequency: ${freq * 1000} msgs/s');
+        print('Performance bias: $performanceBias');
+
+        if ((pageSize < 2000 && direction > 0) ||
+            (pageSize > 100 && direction < 0)) {
+          pageSize += 100 * direction;
+          print('Changing page size to $pageSize');
+        }
+
+        lastFreq = freq;
+      }
     }
 
     await kb.getMetadata().then((value) => print(

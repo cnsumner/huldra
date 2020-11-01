@@ -49,11 +49,9 @@ class KnowledgeBase extends _$KnowledgeBase {
   Future<void> updateWord(Word word) =>
       into(words).insertOnConflictUpdate(word);
 
-  Future<void> updateWords(List<Word> updates) async {
-    await batch((batch) {
-      batch.insertAllOnConflictUpdate(words, updates);
-    });
-  }
+  Future<void> updateWords(List<Word> updates) => batch((batch) {
+        batch.insertAllOnConflictUpdate(words, updates);
+      });
 
   Future<List<Word>> queryWords(String word) => (select(words)
         ..where((tbl) => tbl.word.lower().equals(word.toLowerCase())))
