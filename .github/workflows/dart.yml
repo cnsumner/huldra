@@ -23,15 +23,15 @@ jobs:
       run: dart2native ./bin/main.dart -o ./huldra
     - name: Get version
       run: |
-        echo ::set-env name=TAG_NAME::$(cat ${PUBSPEC_PATH}/pubspec.yaml | grep version | head -1 | awk -F: '{ print $2 }' | sed 's/[",]//g' | tr -d '[[:space:]]')
+        echo "TAG_NAME=$(cat ./pubspec.yaml | grep version | head -1 | awk -F: '{ print $2 }' | sed 's/[",]//g' | tr -d '[[:space:]]')" >> $GITHUB_ENV
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: v${{ env.TAG_NAME }}
-        release_name: Release v${{ env.TAG_NAME }}
+        tag_name: v$TAG_NAME
+        release_name: Release v$TAG_NAME
         draft: false
         prerelease: false
     - name: Upload artifacts
