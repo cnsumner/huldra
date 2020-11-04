@@ -16,6 +16,13 @@
 				"kind": "build",
 				"isDefault": true
 			}
+		},
+		{
+			"type": "pub",
+			"command": "watch",
+			"problemMatcher": ["$dart-pub-build_runner"],
+			"group": "build",
+			"label": "pub: build_runner watch"
 		}
 	]
 }

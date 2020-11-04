@@ -1,53 +1,27 @@
 import 'dart:math';
 
-import 'package:hive/hive.dart';
+import 'package:huldra/schema/knowledge_base.dart';
+import 'package:injector/injector.dart';
 
-part 'word.g.dart';
-
-@HiveType(typeId: 0)
-class Word extends HiveObject {
-  /// Full length word
-  @HiveField(0)
-  String word;
-
-  /// Words seen before this word and their occurance counts
-  ///
-  /// {wordHash, count}
-  @HiveField(1)
-  Map<String, int> prefixes = {};
-
-  /// Words seen after this word and their occurance counts
-  ///
-  /// {wordHash, count}
-  @HiveField(2)
-  Map<String, int> suffixes = {};
-
-  /// Positions from beginning of message this word is typically found at
-  ///
-  /// {pos, count}
-  @HiveField(3)
-  Map<int, int> distFromHead = {};
-
-  /// Positions from end of message this word is typically found at
-  ///
-  /// {pos, count}
-  @HiveField(4)
-  Map<int, int> distFromTail = {};
-
-  /// Number of times this word occurs across all messages
-  @HiveField(5)
-  int totalOccurances = 0;
-
-  /// Number of messages this word occurs in
-  @HiveField(6)
-  int msgOccurances = 0;
-
-  Word(this.word);
+extension WordExtensions on Word {
+  /// Creates a new word with [wordHash] and [word] with all other fields defaulted
+  static Word constructWord(String wordHash, String word) {
+    return Word(
+        wordHash: wordHash,
+        word: word,
+        prefixes: <String, int>{},
+        suffixes: <String, int>{},
+        distFromHead: <int, int>{},
+        distFromTail: <int, int>{},
+        totalOccurances: 0,
+        msgOccurances: 0);
+  }
 
   /// Performs a weighted random selection on [map] using [r] as the random value
-  Word _weightedRandomWordSelection(double r, Map<String, int> map) {
+  Future<Word> _weightedRandomWordSelection(
+      double r, Map<String, int> map) async {
     if (map.isNotEmpty) {
-      var kb = Hive.box<Word>('kb');
+      var kb = Injector.appInstance.getDependency<KnowledgeBase>();
       var sumOfWeights = map.values.fold(0, (prev, element) => prev + element);
 
       r = r * sumOfWeights;
@@ -56,7 +30,7 @@ class Word extends HiveObject {
         r -= map[key];
 
         if (r <= 0) {
-          return kb.get(key);
+          return kb.getWord(key);
         }
       }
     }
@@ -64,6 +38,7 @@ class Word extends HiveObject {
     return null;
   }
 
+  /// Performs a weighted random selection on [map] using [r] as the random value
   int _weightedRandomDistSelection(double r, Map<int, int> map) {
     if (map.isNotEmpty) {
       var sumOfWeights =
@@ -84,26 +59,27 @@ class Word extends HiveObject {
   }
 
   /// Performs a weighted random selection on [prefixes] using [r] as the random value
-  Word randomPrefix(double r) {
+  Future<Word> randomPrefix(double r) async {
     return _weightedRandomWordSelection(r, prefixes);
   }
 
   /// Performs a weighted random selection on [suffixes] using [r] as the random value
-  Word randomSuffix(double r) {
+  Future<Word> randomSuffix(double r) async {
     return _weightedRandomWordSelection(r, suffixes);
   }
 
+  /// Performs a weighted random selection on [distFromHead] using [r] as the random value
   int randomDistFromHead(double r) {
     return _weightedRandomDistSelection(r, distFromHead);
   }
 
+  /// Performs a weighted random selection on [distFromTail] using [r] as the random value
   int randomDistFromTail(double r) {
     return _weightedRandomDistSelection(r, distFromTail);
   }
 
-  @override
-  String toString() {
-    var kb = Hive.box<Word>('kb');
+  Future<String> toFormattedString() async {
+    var kb = Injector.appInstance.getDependency<KnowledgeBase>();
 
     var topPrefixes = prefixes.keys.toList();
     topPrefixes.sort((a, b) {
@@ -115,12 +91,20 @@ class Word extends HiveObject {
       return suffixes[b].compareTo(suffixes[a]);
     });
 
+    var topPrefix = topPrefixes.isNotEmpty
+        ? (await kb.getWord(topPrefixes.first))?.word
+        : '';
+    var topSuffix = topSuffixes.isNotEmpty
+        ? (await kb.getWord(topSuffixes.first))?.word
+        : '';
+
     return '''```
 Word: $word
 Total usages: $totalOccurances
 Messages used in: $msgOccurances
-Top prefix: ${topPrefixes.isNotEmpty ? kb.get(topPrefixes.first)?.word : ''}
-Top Suffix: ${topSuffixes.isNotEmpty ? kb.get(topSuffixes.first)?.word : ''}
+Top prefix: $topPrefix
+Top Suffix: $topSuffix
+Example Usage: "$topPrefix $word $topSuffix"
 ```''';
   }
 }

@@ -1,11 +1,9 @@
 import 'dart:ffi';
 import 'dart:io';
 
-import 'package:hive/hive.dart';
 import 'package:huldra/huldra.dart';
-import 'package:huldra/markov/markov.dart';
-import 'package:huldra/markov/word.dart';
-import 'package:huldra/schema/tables.dart';
+import 'package:huldra/schema/knowledge_base.dart';
+import 'package:huldra/schema/raw_data.dart';
 import 'package:injector/injector.dart';
 import 'package:moor/ffi.dart';
 import 'package:sqlite3/open.dart';
@@ -33,15 +31,21 @@ void main() async {
         return DynamicLibrary.open('${basePath}/sqlite3.dll');
       });
     }
-    var kbFile = File('${basePath}/kb.sqlite');
+    var rawDataFile = File('${basePath}/rawData.sqlite');
 
-    return RawData(VmDatabase(kbFile));
+    return RawData(VmDatabase(rawDataFile));
   });
 
-  // init Hive storage
-  await Hive.init(basePath);
-  Hive.registerAdapter(MarkovAdapter());
-  Hive.registerAdapter(WordAdapter());
+  injector.registerSingleton<KnowledgeBase>((_) {
+    if (Platform.isWindows) {
+      open.overrideFor(OperatingSystem.windows, () {
+        return DynamicLibrary.open('${basePath}/sqlite3.dll');
+      });
+    }
+    var kbFile = File('${basePath}/kb.sqlite');
+
+    return KnowledgeBase(VmDatabase(kbFile));
+  });
 
   // initialize bot
   Huldra();

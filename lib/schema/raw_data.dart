@@ -1,6 +1,6 @@
 import 'package:moor/moor.dart';
 
-part 'tables.g.dart';
+part 'raw_data.g.dart';
 
 class Messages extends Table {
   TextColumn get id => text()();
