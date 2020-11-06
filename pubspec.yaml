@@ -1,6 +1,6 @@
 name: huldra
 description: A sample command-line application.
-version: 0.9.0
+version: 0.9.1
 # homepage: https://www.example.com
 environment:
   sdk: ">=2.10.0 <3.0.0"
