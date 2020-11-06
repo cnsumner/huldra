@@ -47,7 +47,7 @@ class Huldra {
         await _addMessage(e.message).whenComplete(() async {
           var rand = Random(DateTime.now().millisecondsSinceEpoch);
 
-          if (rand.nextInt(101) > 80) {
+          if ((rand.nextInt(20) + 1) == 20) {
             var reply = (await Markov.generate(e.message.content.split(' ')
                   ..removeWhere((word) => word == '')))
                 .trim();
