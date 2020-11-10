@@ -12,11 +12,13 @@ import 'package:huldra/extensions/word_extensions.dart';
 
 class Huldra {
   Nyxx bot;
+  int probability;
 
   Huldra() {
     var _config = Injector.appInstance.getDependency<YamlConfig>();
 
     bot = NyxxVm(_config.getString('discordToken'));
+    probability = _config.getInt('probability');
 
     var kb = Injector.appInstance.getDependency<KnowledgeBase>();
 
@@ -47,7 +49,7 @@ class Huldra {
         await _addMessage(e.message).whenComplete(() async {
           var rand = Random(DateTime.now().millisecondsSinceEpoch);
 
-          if ((rand.nextInt(20) + 1) == 20) {
+          if ((rand.nextInt(probability) + 1) == probability) {
             var reply = (await Markov.generate(e.message.content.split(' ')
                   ..removeWhere((word) => word == '')))
                 .trim();

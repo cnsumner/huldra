@@ -176,7 +176,7 @@ class Markov {
         var suffix = await suffixWords.last.randomSuffix(rand.nextDouble());
         suffixWords.add(suffix);
 
-        if (suffixCount <= -5 && suffix.distFromTail.containsKey(0)) {
+        if (suffixCount <= 0 && suffix.distFromTail.containsKey(0)) {
           break;
         }
       }
