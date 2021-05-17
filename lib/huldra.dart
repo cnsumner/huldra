@@ -23,20 +23,28 @@ class Huldra {
     var kb = Injector.appInstance.getDependency<KnowledgeBase>();
 
     bot.onMessageReceived.listen((MessageEvent e) async {
+      // ignore bot messages and empty messages
       if (e.message.author.bot ||
           (e.message.content.isEmpty && e.message.attachments.isEmpty)) {
         print('Ignoring bot or empty message: ${e.message.id.id}');
-      } else if (e.message.content.startsWith('_') &&
+      }
+      // process commands
+      else if (e.message.content.startsWith('_') &&
           !e.message.content.startsWith('__')) {
         _processCommands(e);
-      } else if (e.message.content.startsWith('<@!674451490743779339>')) {
+      }
+      // process bot mentions
+      else if (e.message.mentions.entries
+          .where((mention) => mention.key.id == bot.self.id.id)
+          .isNotEmpty) {
         await _addMessage(e.message).whenComplete(() async {
           var input = e.message.content.split(' ')
             ..removeAt(0)
             ..removeWhere((word) => word == '');
 
           var reply = (await Markov.generate(input))
-              .replaceAll('<@!674451490743779339>', '')
+              .replaceAll('<@!${bot.self.id.id}>', '')
+              .replaceAll('<@${bot.self.id.id}>', 'replace')
               .trim();
 
           if (reply.compareTo(input.join(' ').trim()) == 0) {
@@ -44,8 +52,12 @@ class Huldra {
           }
 
           await e.message.reply(content: reply, mention: false);
-        }).catchError((error) => print(error));
-      } else {
+        }).catchError((error) {
+          print(error);
+        });
+      }
+      // default case. respond normally
+      else {
         await _addMessage(e.message).whenComplete(() async {
           var rand = Random(DateTime.now().millisecondsSinceEpoch);
 

@@ -18,7 +18,7 @@ jobs:
     - name: Install dependencies
       run: pub get
     - name: Build
-      run: dart2native ./bin/main.dart -o ./huldra
+      run: dart compile exe ./bin/main.dart -o ./huldra
     - name: Get version
       run: |
         echo "TAG_NAME=$(cat ./pubspec.yaml | grep version | head -1 | awk -F: '{ print $2 }' | sed 's/[",]//g' | tr -d '[[:space:]]')" >> $GITHUB_ENV
