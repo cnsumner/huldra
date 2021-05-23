@@ -17,102 +17,79 @@ class Word extends DataClass implements Insertable<Word> {
   final int totalOccurances;
   final int msgOccurances;
   Word(
-      {@required this.wordHash,
-      @required this.word,
-      @required this.prefixes,
-      @required this.suffixes,
-      @required this.distFromHead,
-      @required this.distFromTail,
-      @required this.totalOccurances,
-      @required this.msgOccurances});
+      {required this.wordHash,
+      required this.word,
+      required this.prefixes,
+      required this.suffixes,
+      required this.distFromHead,
+      required this.distFromTail,
+      required this.totalOccurances,
+      required this.msgOccurances});
   factory Word.fromData(Map<String, dynamic> data, GeneratedDatabase db,
-      {String prefix}) {
+      {String? prefix}) {
     final effectivePrefix = prefix ?? '';
-    final stringType = db.typeSystem.forDartType<String>();
-    final intType = db.typeSystem.forDartType<int>();
     return Word(
-      wordHash: stringType
-          .mapFromDatabaseResponse(data['${effectivePrefix}word_hash']),
-      word: stringType.mapFromDatabaseResponse(data['${effectivePrefix}word']),
-      prefixes: $WordsTable.$converter0.mapToDart(stringType
-          .mapFromDatabaseResponse(data['${effectivePrefix}prefixes'])),
-      suffixes: $WordsTable.$converter1.mapToDart(stringType
-          .mapFromDatabaseResponse(data['${effectivePrefix}suffixes'])),
-      distFromHead: $WordsTable.$converter2.mapToDart(stringType
-          .mapFromDatabaseResponse(data['${effectivePrefix}dist_from_head'])),
-      distFromTail: $WordsTable.$converter3.mapToDart(stringType
-          .mapFromDatabaseResponse(data['${effectivePrefix}dist_from_tail'])),
-      totalOccurances: intType
-          .mapFromDatabaseResponse(data['${effectivePrefix}total_occurances']),
-      msgOccurances: intType
-          .mapFromDatabaseResponse(data['${effectivePrefix}msg_occurances']),
+      wordHash: const StringType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}word_hash'])!,
+      word: const StringType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}word'])!,
+      prefixes: $WordsTable.$converter0.mapToDart(const StringType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}prefixes']))!,
+      suffixes: $WordsTable.$converter1.mapToDart(const StringType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}suffixes']))!,
+      distFromHead: $WordsTable.$converter2.mapToDart(const StringType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}dist_from_head']))!,
+      distFromTail: $WordsTable.$converter3.mapToDart(const StringType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}dist_from_tail']))!,
+      totalOccurances: const IntType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}total_occurances'])!,
+      msgOccurances: const IntType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}msg_occurances'])!,
     );
   }
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    if (!nullToAbsent || wordHash != null) {
-      map['word_hash'] = Variable<String>(wordHash);
-    }
-    if (!nullToAbsent || word != null) {
-      map['word'] = Variable<String>(word);
-    }
-    if (!nullToAbsent || prefixes != null) {
+    map['word_hash'] = Variable<String>(wordHash);
+    map['word'] = Variable<String>(word);
+    {
       final converter = $WordsTable.$converter0;
-      map['prefixes'] = Variable<String>(converter.mapToSql(prefixes));
+      map['prefixes'] = Variable<String>(converter.mapToSql(prefixes)!);
     }
-    if (!nullToAbsent || suffixes != null) {
+    {
       final converter = $WordsTable.$converter1;
-      map['suffixes'] = Variable<String>(converter.mapToSql(suffixes));
+      map['suffixes'] = Variable<String>(converter.mapToSql(suffixes)!);
     }
-    if (!nullToAbsent || distFromHead != null) {
+    {
       final converter = $WordsTable.$converter2;
       map['dist_from_head'] =
-          Variable<String>(converter.mapToSql(distFromHead));
+          Variable<String>(converter.mapToSql(distFromHead)!);
     }
-    if (!nullToAbsent || distFromTail != null) {
+    {
       final converter = $WordsTable.$converter3;
       map['dist_from_tail'] =
-          Variable<String>(converter.mapToSql(distFromTail));
+          Variable<String>(converter.mapToSql(distFromTail)!);
     }
-    if (!nullToAbsent || totalOccurances != null) {
-      map['total_occurances'] = Variable<int>(totalOccurances);
-    }
-    if (!nullToAbsent || msgOccurances != null) {
-      map['msg_occurances'] = Variable<int>(msgOccurances);
-    }
+    map['total_occurances'] = Variable<int>(totalOccurances);
+    map['msg_occurances'] = Variable<int>(msgOccurances);
     return map;
   }
 
   WordsCompanion toCompanion(bool nullToAbsent) {
     return WordsCompanion(
-      wordHash: wordHash == null && nullToAbsent
-          ? const Value.absent()
-          : Value(wordHash),
-      word: word == null && nullToAbsent ? const Value.absent() : Value(word),
-      prefixes: prefixes == null && nullToAbsent
-          ? const Value.absent()
-          : Value(prefixes),
-      suffixes: suffixes == null && nullToAbsent
-          ? const Value.absent()
-          : Value(suffixes),
-      distFromHead: distFromHead == null && nullToAbsent
-          ? const Value.absent()
-          : Value(distFromHead),
-      distFromTail: distFromTail == null && nullToAbsent
-          ? const Value.absent()
-          : Value(distFromTail),
-      totalOccurances: totalOccurances == null && nullToAbsent
-          ? const Value.absent()
-          : Value(totalOccurances),
-      msgOccurances: msgOccurances == null && nullToAbsent
-          ? const Value.absent()
-          : Value(msgOccurances),
+      wordHash: Value(wordHash),
+      word: Value(word),
+      prefixes: Value(prefixes),
+      suffixes: Value(suffixes),
+      distFromHead: Value(distFromHead),
+      distFromTail: Value(distFromTail),
+      totalOccurances: Value(totalOccurances),
+      msgOccurances: Value(msgOccurances),
     );
   }
 
   factory Word.fromJson(Map<String, dynamic> json,
-      {ValueSerializer serializer}) {
+      {ValueSerializer? serializer}) {
     serializer ??= moorRuntimeOptions.defaultSerializer;
     return Word(
       wordHash: serializer.fromJson<String>(json['wordHash']),
@@ -126,7 +103,7 @@ class Word extends DataClass implements Insertable<Word> {
     );
   }
   @override
-  Map<String, dynamic> toJson({ValueSerializer serializer}) {
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= moorRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'wordHash': serializer.toJson<String>(wordHash),
@@ -141,14 +118,14 @@ class Word extends DataClass implements Insertable<Word> {
   }
 
   Word copyWith(
-          {String wordHash,
-          String word,
-          Map<String, int> prefixes,
-          Map<String, int> suffixes,
-          Map<int, int> distFromHead,
-          Map<int, int> distFromTail,
-          int totalOccurances,
-          int msgOccurances}) =>
+          {String? wordHash,
+          String? word,
+          Map<String, int>? prefixes,
+          Map<String, int>? suffixes,
+          Map<int, int>? distFromHead,
+          Map<int, int>? distFromTail,
+          int? totalOccurances,
+          int? msgOccurances}) =>
       Word(
         wordHash: wordHash ?? this.wordHash,
         word: word ?? this.word,
@@ -190,7 +167,7 @@ class Word extends DataClass implements Insertable<Word> {
                           $mrjc(totalOccurances.hashCode,
                               msgOccurances.hashCode))))))));
   @override
-  bool operator ==(dynamic other) =>
+  bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Word &&
           other.wordHash == this.wordHash &&
@@ -223,14 +200,14 @@ class WordsCompanion extends UpdateCompanion<Word> {
     this.msgOccurances = const Value.absent(),
   });
   WordsCompanion.insert({
-    @required String wordHash,
-    @required String word,
-    @required Map<String, int> prefixes,
-    @required Map<String, int> suffixes,
-    @required Map<int, int> distFromHead,
-    @required Map<int, int> distFromTail,
-    @required int totalOccurances,
-    @required int msgOccurances,
+    required String wordHash,
+    required String word,
+    required Map<String, int> prefixes,
+    required Map<String, int> suffixes,
+    required Map<int, int> distFromHead,
+    required Map<int, int> distFromTail,
+    required int totalOccurances,
+    required int msgOccurances,
   })  : wordHash = Value(wordHash),
         word = Value(word),
         prefixes = Value(prefixes),
@@ -240,14 +217,14 @@ class WordsCompanion extends UpdateCompanion<Word> {
         totalOccurances = Value(totalOccurances),
         msgOccurances = Value(msgOccurances);
   static Insertable<Word> custom({
-    Expression<String> wordHash,
-    Expression<String> word,
-    Expression<String> prefixes,
-    Expression<String> suffixes,
-    Expression<String> distFromHead,
-    Expression<String> distFromTail,
-    Expression<int> totalOccurances,
-    Expression<int> msgOccurances,
+    Expression<String>? wordHash,
+    Expression<String>? word,
+    Expression<Map<String, int>>? prefixes,
+    Expression<Map<String, int>>? suffixes,
+    Expression<Map<int, int>>? distFromHead,
+    Expression<Map<int, int>>? distFromTail,
+    Expression<int>? totalOccurances,
+    Expression<int>? msgOccurances,
   }) {
     return RawValuesInsertable({
       if (wordHash != null) 'word_hash': wordHash,
@@ -262,14 +239,14 @@ class WordsCompanion extends UpdateCompanion<Word> {
   }
 
   WordsCompanion copyWith(
-      {Value<String> wordHash,
-      Value<String> word,
-      Value<Map<String, int>> prefixes,
-      Value<Map<String, int>> suffixes,
-      Value<Map<int, int>> distFromHead,
-      Value<Map<int, int>> distFromTail,
-      Value<int> totalOccurances,
-      Value<int> msgOccurances}) {
+      {Value<String>? wordHash,
+      Value<String>? word,
+      Value<Map<String, int>>? prefixes,
+      Value<Map<String, int>>? suffixes,
+      Value<Map<int, int>>? distFromHead,
+      Value<Map<int, int>>? distFromTail,
+      Value<int>? totalOccurances,
+      Value<int>? msgOccurances}) {
     return WordsCompanion(
       wordHash: wordHash ?? this.wordHash,
       word: word ?? this.word,
@@ -293,21 +270,21 @@ class WordsCompanion extends UpdateCompanion<Word> {
     }
     if (prefixes.present) {
       final converter = $WordsTable.$converter0;
-      map['prefixes'] = Variable<String>(converter.mapToSql(prefixes.value));
+      map['prefixes'] = Variable<String>(converter.mapToSql(prefixes.value)!);
     }
     if (suffixes.present) {
       final converter = $WordsTable.$converter1;
-      map['suffixes'] = Variable<String>(converter.mapToSql(suffixes.value));
+      map['suffixes'] = Variable<String>(converter.mapToSql(suffixes.value)!);
     }
     if (distFromHead.present) {
       final converter = $WordsTable.$converter2;
       map['dist_from_head'] =
-          Variable<String>(converter.mapToSql(distFromHead.value));
+          Variable<String>(converter.mapToSql(distFromHead.value)!);
     }
     if (distFromTail.present) {
       final converter = $WordsTable.$converter3;
       map['dist_from_tail'] =
-          Variable<String>(converter.mapToSql(distFromTail.value));
+          Variable<String>(converter.mapToSql(distFromTail.value)!);
     }
     if (totalOccurances.present) {
       map['total_occurances'] = Variable<int>(totalOccurances.value);
@@ -336,12 +313,11 @@ class WordsCompanion extends UpdateCompanion<Word> {
 
 class $WordsTable extends Words with TableInfo<$WordsTable, Word> {
   final GeneratedDatabase _db;
-  final String _alias;
+  final String? _alias;
   $WordsTable(this._db, [this._alias]);
   final VerificationMeta _wordHashMeta = const VerificationMeta('wordHash');
-  GeneratedTextColumn _wordHash;
   @override
-  GeneratedTextColumn get wordHash => _wordHash ??= _constructWordHash();
+  late final GeneratedTextColumn wordHash = _constructWordHash();
   GeneratedTextColumn _constructWordHash() {
     return GeneratedTextColumn(
       'word_hash',
@@ -351,9 +327,8 @@ class $WordsTable extends Words with TableInfo<$WordsTable, Word> {
   }
 
   final VerificationMeta _wordMeta = const VerificationMeta('word');
-  GeneratedTextColumn _word;
   @override
-  GeneratedTextColumn get word => _word ??= _constructWord();
+  late final GeneratedTextColumn word = _constructWord();
   GeneratedTextColumn _constructWord() {
     return GeneratedTextColumn(
       'word',
@@ -363,9 +338,8 @@ class $WordsTable extends Words with TableInfo<$WordsTable, Word> {
   }
 
   final VerificationMeta _prefixesMeta = const VerificationMeta('prefixes');
-  GeneratedTextColumn _prefixes;
   @override
-  GeneratedTextColumn get prefixes => _prefixes ??= _constructPrefixes();
+  late final GeneratedTextColumn prefixes = _constructPrefixes();
   GeneratedTextColumn _constructPrefixes() {
     return GeneratedTextColumn(
       'prefixes',
@@ -375,9 +349,8 @@ class $WordsTable extends Words with TableInfo<$WordsTable, Word> {
   }
 
   final VerificationMeta _suffixesMeta = const VerificationMeta('suffixes');
-  GeneratedTextColumn _suffixes;
   @override
-  GeneratedTextColumn get suffixes => _suffixes ??= _constructSuffixes();
+  late final GeneratedTextColumn suffixes = _constructSuffixes();
   GeneratedTextColumn _constructSuffixes() {
     return GeneratedTextColumn(
       'suffixes',
@@ -388,10 +361,8 @@ class $WordsTable extends Words with TableInfo<$WordsTable, Word> {
 
   final VerificationMeta _distFromHeadMeta =
       const VerificationMeta('distFromHead');
-  GeneratedTextColumn _distFromHead;
   @override
-  GeneratedTextColumn get distFromHead =>
-      _distFromHead ??= _constructDistFromHead();
+  late final GeneratedTextColumn distFromHead = _constructDistFromHead();
   GeneratedTextColumn _constructDistFromHead() {
     return GeneratedTextColumn(
       'dist_from_head',
@@ -402,10 +373,8 @@ class $WordsTable extends Words with TableInfo<$WordsTable, Word> {
 
   final VerificationMeta _distFromTailMeta =
       const VerificationMeta('distFromTail');
-  GeneratedTextColumn _distFromTail;
   @override
-  GeneratedTextColumn get distFromTail =>
-      _distFromTail ??= _constructDistFromTail();
+  late final GeneratedTextColumn distFromTail = _constructDistFromTail();
   GeneratedTextColumn _constructDistFromTail() {
     return GeneratedTextColumn(
       'dist_from_tail',
@@ -416,10 +385,8 @@ class $WordsTable extends Words with TableInfo<$WordsTable, Word> {
 
   final VerificationMeta _totalOccurancesMeta =
       const VerificationMeta('totalOccurances');
-  GeneratedIntColumn _totalOccurances;
   @override
-  GeneratedIntColumn get totalOccurances =>
-      _totalOccurances ??= _constructTotalOccurances();
+  late final GeneratedIntColumn totalOccurances = _constructTotalOccurances();
   GeneratedIntColumn _constructTotalOccurances() {
     return GeneratedIntColumn(
       'total_occurances',
@@ -430,10 +397,8 @@ class $WordsTable extends Words with TableInfo<$WordsTable, Word> {
 
   final VerificationMeta _msgOccurancesMeta =
       const VerificationMeta('msgOccurances');
-  GeneratedIntColumn _msgOccurances;
   @override
-  GeneratedIntColumn get msgOccurances =>
-      _msgOccurances ??= _constructMsgOccurances();
+  late final GeneratedIntColumn msgOccurances = _constructMsgOccurances();
   GeneratedIntColumn _constructMsgOccurances() {
     return GeneratedIntColumn(
       'msg_occurances',
@@ -466,13 +431,13 @@ class $WordsTable extends Words with TableInfo<$WordsTable, Word> {
     final data = instance.toColumns(true);
     if (data.containsKey('word_hash')) {
       context.handle(_wordHashMeta,
-          wordHash.isAcceptableOrUnknown(data['word_hash'], _wordHashMeta));
+          wordHash.isAcceptableOrUnknown(data['word_hash']!, _wordHashMeta));
     } else if (isInserting) {
       context.missing(_wordHashMeta);
     }
     if (data.containsKey('word')) {
       context.handle(
-          _wordMeta, word.isAcceptableOrUnknown(data['word'], _wordMeta));
+          _wordMeta, word.isAcceptableOrUnknown(data['word']!, _wordMeta));
     } else if (isInserting) {
       context.missing(_wordMeta);
     }
@@ -484,7 +449,7 @@ class $WordsTable extends Words with TableInfo<$WordsTable, Word> {
       context.handle(
           _totalOccurancesMeta,
           totalOccurances.isAcceptableOrUnknown(
-              data['total_occurances'], _totalOccurancesMeta));
+              data['total_occurances']!, _totalOccurancesMeta));
     } else if (isInserting) {
       context.missing(_totalOccurancesMeta);
     }
@@ -492,7 +457,7 @@ class $WordsTable extends Words with TableInfo<$WordsTable, Word> {
       context.handle(
           _msgOccurancesMeta,
           msgOccurances.isAcceptableOrUnknown(
-              data['msg_occurances'], _msgOccurancesMeta));
+              data['msg_occurances']!, _msgOccurancesMeta));
     } else if (isInserting) {
       context.missing(_msgOccurancesMeta);
     }
@@ -502,7 +467,7 @@ class $WordsTable extends Words with TableInfo<$WordsTable, Word> {
   @override
   Set<GeneratedColumn> get $primaryKey => {wordHash};
   @override
-  Word map(Map<String, dynamic> data, {String tablePrefix}) {
+  Word map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : null;
     return Word.fromData(data, _db, prefix: effectivePrefix);
   }
@@ -526,49 +491,38 @@ class MetaData extends DataClass implements Insertable<MetaData> {
   final int id;
   final int msgCount;
   final int wordCount;
-  MetaData(
-      {@required this.id, @required this.msgCount, @required this.wordCount});
+  MetaData({required this.id, required this.msgCount, required this.wordCount});
   factory MetaData.fromData(Map<String, dynamic> data, GeneratedDatabase db,
-      {String prefix}) {
+      {String? prefix}) {
     final effectivePrefix = prefix ?? '';
-    final intType = db.typeSystem.forDartType<int>();
     return MetaData(
-      id: intType.mapFromDatabaseResponse(data['${effectivePrefix}id']),
-      msgCount:
-          intType.mapFromDatabaseResponse(data['${effectivePrefix}msg_count']),
-      wordCount:
-          intType.mapFromDatabaseResponse(data['${effectivePrefix}word_count']),
+      id: const IntType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}id'])!,
+      msgCount: const IntType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}msg_count'])!,
+      wordCount: const IntType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}word_count'])!,
     );
   }
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    if (!nullToAbsent || id != null) {
-      map['id'] = Variable<int>(id);
-    }
-    if (!nullToAbsent || msgCount != null) {
-      map['msg_count'] = Variable<int>(msgCount);
-    }
-    if (!nullToAbsent || wordCount != null) {
-      map['word_count'] = Variable<int>(wordCount);
-    }
+    map['id'] = Variable<int>(id);
+    map['msg_count'] = Variable<int>(msgCount);
+    map['word_count'] = Variable<int>(wordCount);
     return map;
   }
 
   MetaCompanion toCompanion(bool nullToAbsent) {
     return MetaCompanion(
-      id: id == null && nullToAbsent ? const Value.absent() : Value(id),
-      msgCount: msgCount == null && nullToAbsent
-          ? const Value.absent()
-          : Value(msgCount),
-      wordCount: wordCount == null && nullToAbsent
-          ? const Value.absent()
-          : Value(wordCount),
+      id: Value(id),
+      msgCount: Value(msgCount),
+      wordCount: Value(wordCount),
     );
   }
 
   factory MetaData.fromJson(Map<String, dynamic> json,
-      {ValueSerializer serializer}) {
+      {ValueSerializer? serializer}) {
     serializer ??= moorRuntimeOptions.defaultSerializer;
     return MetaData(
       id: serializer.fromJson<int>(json['id']),
@@ -577,7 +531,7 @@ class MetaData extends DataClass implements Insertable<MetaData> {
     );
   }
   @override
-  Map<String, dynamic> toJson({ValueSerializer serializer}) {
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= moorRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
@@ -586,7 +540,7 @@ class MetaData extends DataClass implements Insertable<MetaData> {
     };
   }
 
-  MetaData copyWith({int id, int msgCount, int wordCount}) => MetaData(
+  MetaData copyWith({int? id, int? msgCount, int? wordCount}) => MetaData(
         id: id ?? this.id,
         msgCount: msgCount ?? this.msgCount,
         wordCount: wordCount ?? this.wordCount,
@@ -605,7 +559,7 @@ class MetaData extends DataClass implements Insertable<MetaData> {
   int get hashCode =>
       $mrjf($mrjc(id.hashCode, $mrjc(msgCount.hashCode, wordCount.hashCode)));
   @override
-  bool operator ==(dynamic other) =>
+  bool operator ==(Object other) =>
       identical(this, other) ||
       (other is MetaData &&
           other.id == this.id &&
@@ -628,9 +582,9 @@ class MetaCompanion extends UpdateCompanion<MetaData> {
     this.wordCount = const Value.absent(),
   });
   static Insertable<MetaData> custom({
-    Expression<int> id,
-    Expression<int> msgCount,
-    Expression<int> wordCount,
+    Expression<int>? id,
+    Expression<int>? msgCount,
+    Expression<int>? wordCount,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -640,7 +594,7 @@ class MetaCompanion extends UpdateCompanion<MetaData> {
   }
 
   MetaCompanion copyWith(
-      {Value<int> id, Value<int> msgCount, Value<int> wordCount}) {
+      {Value<int>? id, Value<int>? msgCount, Value<int>? wordCount}) {
     return MetaCompanion(
       id: id ?? this.id,
       msgCount: msgCount ?? this.msgCount,
@@ -676,30 +630,27 @@ class MetaCompanion extends UpdateCompanion<MetaData> {
 
 class $MetaTable extends Meta with TableInfo<$MetaTable, MetaData> {
   final GeneratedDatabase _db;
-  final String _alias;
+  final String? _alias;
   $MetaTable(this._db, [this._alias]);
   final VerificationMeta _idMeta = const VerificationMeta('id');
-  GeneratedIntColumn _id;
   @override
-  GeneratedIntColumn get id => _id ??= _constructId();
+  late final GeneratedIntColumn id = _constructId();
   GeneratedIntColumn _constructId() {
     return GeneratedIntColumn('id', $tableName, false,
         defaultValue: const Constant(1));
   }
 
   final VerificationMeta _msgCountMeta = const VerificationMeta('msgCount');
-  GeneratedIntColumn _msgCount;
   @override
-  GeneratedIntColumn get msgCount => _msgCount ??= _constructMsgCount();
+  late final GeneratedIntColumn msgCount = _constructMsgCount();
   GeneratedIntColumn _constructMsgCount() {
     return GeneratedIntColumn('msg_count', $tableName, false,
         defaultValue: const Constant(0));
   }
 
   final VerificationMeta _wordCountMeta = const VerificationMeta('wordCount');
-  GeneratedIntColumn _wordCount;
   @override
-  GeneratedIntColumn get wordCount => _wordCount ??= _constructWordCount();
+  late final GeneratedIntColumn wordCount = _constructWordCount();
   GeneratedIntColumn _constructWordCount() {
     return GeneratedIntColumn('word_count', $tableName, false,
         defaultValue: const Constant(0));
@@ -719,15 +670,15 @@ class $MetaTable extends Meta with TableInfo<$MetaTable, MetaData> {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id'], _idMeta));
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
     if (data.containsKey('msg_count')) {
       context.handle(_msgCountMeta,
-          msgCount.isAcceptableOrUnknown(data['msg_count'], _msgCountMeta));
+          msgCount.isAcceptableOrUnknown(data['msg_count']!, _msgCountMeta));
     }
     if (data.containsKey('word_count')) {
       context.handle(_wordCountMeta,
-          wordCount.isAcceptableOrUnknown(data['word_count'], _wordCountMeta));
+          wordCount.isAcceptableOrUnknown(data['word_count']!, _wordCountMeta));
     }
     return context;
   }
@@ -735,7 +686,7 @@ class $MetaTable extends Meta with TableInfo<$MetaTable, MetaData> {
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  MetaData map(Map<String, dynamic> data, {String tablePrefix}) {
+  MetaData map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : null;
     return MetaData.fromData(data, _db, prefix: effectivePrefix);
   }
@@ -748,10 +699,8 @@ class $MetaTable extends Meta with TableInfo<$MetaTable, MetaData> {
 
 abstract class _$KnowledgeBase extends GeneratedDatabase {
   _$KnowledgeBase(QueryExecutor e) : super(SqlTypeSystem.defaultInstance, e);
-  $WordsTable _words;
-  $WordsTable get words => _words ??= $WordsTable(this);
-  $MetaTable _meta;
-  $MetaTable get meta => _meta ??= $MetaTable(this);
+  late final $WordsTable words = $WordsTable(this);
+  late final $MetaTable meta = $MetaTable(this);
   Selectable<Word> randomWord() {
     return customSelect(
         'select * from Words where rowid = (abs(random()) % (select (select max(rowid) from Words)+1));',
@@ -761,8 +710,8 @@ abstract class _$KnowledgeBase extends GeneratedDatabase {
 
   Selectable<int> countWords() {
     return customSelect('select count(rowid) from Words;',
-        variables: [],
-        readsFrom: {words}).map((QueryRow row) => row.readInt('count(rowid)'));
+            variables: [], readsFrom: {words})
+        .map((QueryRow row) => row.read<int>('count(rowid)'));
   }
 
   @override

@@ -15,76 +15,55 @@ class Message extends DataClass implements Insertable<Message> {
   final String content;
   final DateTime timestamp;
   Message(
-      {@required this.id,
-      @required this.author,
-      @required this.guild,
-      @required this.channel,
-      @required this.content,
-      @required this.timestamp});
+      {required this.id,
+      required this.author,
+      required this.guild,
+      required this.channel,
+      required this.content,
+      required this.timestamp});
   factory Message.fromData(Map<String, dynamic> data, GeneratedDatabase db,
-      {String prefix}) {
+      {String? prefix}) {
     final effectivePrefix = prefix ?? '';
-    final stringType = db.typeSystem.forDartType<String>();
-    final dateTimeType = db.typeSystem.forDartType<DateTime>();
     return Message(
-      id: stringType.mapFromDatabaseResponse(data['${effectivePrefix}id']),
-      author:
-          stringType.mapFromDatabaseResponse(data['${effectivePrefix}author']),
-      guild:
-          stringType.mapFromDatabaseResponse(data['${effectivePrefix}guild']),
-      channel:
-          stringType.mapFromDatabaseResponse(data['${effectivePrefix}channel']),
-      content:
-          stringType.mapFromDatabaseResponse(data['${effectivePrefix}content']),
-      timestamp: dateTimeType
-          .mapFromDatabaseResponse(data['${effectivePrefix}timestamp']),
+      id: const StringType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}id'])!,
+      author: const StringType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}author'])!,
+      guild: const StringType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}guild'])!,
+      channel: const StringType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}channel'])!,
+      content: const StringType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}content'])!,
+      timestamp: const DateTimeType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}timestamp'])!,
     );
   }
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    if (!nullToAbsent || id != null) {
-      map['id'] = Variable<String>(id);
-    }
-    if (!nullToAbsent || author != null) {
-      map['author'] = Variable<String>(author);
-    }
-    if (!nullToAbsent || guild != null) {
-      map['guild'] = Variable<String>(guild);
-    }
-    if (!nullToAbsent || channel != null) {
-      map['channel'] = Variable<String>(channel);
-    }
-    if (!nullToAbsent || content != null) {
-      map['content'] = Variable<String>(content);
-    }
-    if (!nullToAbsent || timestamp != null) {
-      map['timestamp'] = Variable<DateTime>(timestamp);
-    }
+    map['id'] = Variable<String>(id);
+    map['author'] = Variable<String>(author);
+    map['guild'] = Variable<String>(guild);
+    map['channel'] = Variable<String>(channel);
+    map['content'] = Variable<String>(content);
+    map['timestamp'] = Variable<DateTime>(timestamp);
     return map;
   }
 
   MessagesCompanion toCompanion(bool nullToAbsent) {
     return MessagesCompanion(
-      id: id == null && nullToAbsent ? const Value.absent() : Value(id),
-      author:
-          author == null && nullToAbsent ? const Value.absent() : Value(author),
-      guild:
-          guild == null && nullToAbsent ? const Value.absent() : Value(guild),
-      channel: channel == null && nullToAbsent
-          ? const Value.absent()
-          : Value(channel),
-      content: content == null && nullToAbsent
-          ? const Value.absent()
-          : Value(content),
-      timestamp: timestamp == null && nullToAbsent
-          ? const Value.absent()
-          : Value(timestamp),
+      id: Value(id),
+      author: Value(author),
+      guild: Value(guild),
+      channel: Value(channel),
+      content: Value(content),
+      timestamp: Value(timestamp),
     );
   }
 
   factory Message.fromJson(Map<String, dynamic> json,
-      {ValueSerializer serializer}) {
+      {ValueSerializer? serializer}) {
     serializer ??= moorRuntimeOptions.defaultSerializer;
     return Message(
       id: serializer.fromJson<String>(json['id']),
@@ -96,7 +75,7 @@ class Message extends DataClass implements Insertable<Message> {
     );
   }
   @override
-  Map<String, dynamic> toJson({ValueSerializer serializer}) {
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= moorRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
@@ -109,12 +88,12 @@ class Message extends DataClass implements Insertable<Message> {
   }
 
   Message copyWith(
-          {String id,
-          String author,
-          String guild,
-          String channel,
-          String content,
-          DateTime timestamp}) =>
+          {String? id,
+          String? author,
+          String? guild,
+          String? channel,
+          String? content,
+          DateTime? timestamp}) =>
       Message(
         id: id ?? this.id,
         author: author ?? this.author,
@@ -146,7 +125,7 @@ class Message extends DataClass implements Insertable<Message> {
               $mrjc(channel.hashCode,
                   $mrjc(content.hashCode, timestamp.hashCode))))));
   @override
-  bool operator ==(dynamic other) =>
+  bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Message &&
           other.id == this.id &&
@@ -173,12 +152,12 @@ class MessagesCompanion extends UpdateCompanion<Message> {
     this.timestamp = const Value.absent(),
   });
   MessagesCompanion.insert({
-    @required String id,
-    @required String author,
-    @required String guild,
-    @required String channel,
-    @required String content,
-    @required DateTime timestamp,
+    required String id,
+    required String author,
+    required String guild,
+    required String channel,
+    required String content,
+    required DateTime timestamp,
   })  : id = Value(id),
         author = Value(author),
         guild = Value(guild),
@@ -186,12 +165,12 @@ class MessagesCompanion extends UpdateCompanion<Message> {
         content = Value(content),
         timestamp = Value(timestamp);
   static Insertable<Message> custom({
-    Expression<String> id,
-    Expression<String> author,
-    Expression<String> guild,
-    Expression<String> channel,
-    Expression<String> content,
-    Expression<DateTime> timestamp,
+    Expression<String>? id,
+    Expression<String>? author,
+    Expression<String>? guild,
+    Expression<String>? channel,
+    Expression<String>? content,
+    Expression<DateTime>? timestamp,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -204,12 +183,12 @@ class MessagesCompanion extends UpdateCompanion<Message> {
   }
 
   MessagesCompanion copyWith(
-      {Value<String> id,
-      Value<String> author,
-      Value<String> guild,
-      Value<String> channel,
-      Value<String> content,
-      Value<DateTime> timestamp}) {
+      {Value<String>? id,
+      Value<String>? author,
+      Value<String>? guild,
+      Value<String>? channel,
+      Value<String>? content,
+      Value<DateTime>? timestamp}) {
     return MessagesCompanion(
       id: id ?? this.id,
       author: author ?? this.author,
@@ -260,12 +239,11 @@ class MessagesCompanion extends UpdateCompanion<Message> {
 
 class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
   final GeneratedDatabase _db;
-  final String _alias;
+  final String? _alias;
   $MessagesTable(this._db, [this._alias]);
   final VerificationMeta _idMeta = const VerificationMeta('id');
-  GeneratedTextColumn _id;
   @override
-  GeneratedTextColumn get id => _id ??= _constructId();
+  late final GeneratedTextColumn id = _constructId();
   GeneratedTextColumn _constructId() {
     return GeneratedTextColumn(
       'id',
@@ -275,9 +253,8 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
   }
 
   final VerificationMeta _authorMeta = const VerificationMeta('author');
-  GeneratedTextColumn _author;
   @override
-  GeneratedTextColumn get author => _author ??= _constructAuthor();
+  late final GeneratedTextColumn author = _constructAuthor();
   GeneratedTextColumn _constructAuthor() {
     return GeneratedTextColumn(
       'author',
@@ -287,9 +264,8 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
   }
 
   final VerificationMeta _guildMeta = const VerificationMeta('guild');
-  GeneratedTextColumn _guild;
   @override
-  GeneratedTextColumn get guild => _guild ??= _constructGuild();
+  late final GeneratedTextColumn guild = _constructGuild();
   GeneratedTextColumn _constructGuild() {
     return GeneratedTextColumn(
       'guild',
@@ -299,9 +275,8 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
   }
 
   final VerificationMeta _channelMeta = const VerificationMeta('channel');
-  GeneratedTextColumn _channel;
   @override
-  GeneratedTextColumn get channel => _channel ??= _constructChannel();
+  late final GeneratedTextColumn channel = _constructChannel();
   GeneratedTextColumn _constructChannel() {
     return GeneratedTextColumn(
       'channel',
@@ -311,9 +286,8 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
   }
 
   final VerificationMeta _contentMeta = const VerificationMeta('content');
-  GeneratedTextColumn _content;
   @override
-  GeneratedTextColumn get content => _content ??= _constructContent();
+  late final GeneratedTextColumn content = _constructContent();
   GeneratedTextColumn _constructContent() {
     return GeneratedTextColumn(
       'content',
@@ -323,9 +297,8 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
   }
 
   final VerificationMeta _timestampMeta = const VerificationMeta('timestamp');
-  GeneratedDateTimeColumn _timestamp;
   @override
-  GeneratedDateTimeColumn get timestamp => _timestamp ??= _constructTimestamp();
+  late final GeneratedDateTimeColumn timestamp = _constructTimestamp();
   GeneratedDateTimeColumn _constructTimestamp() {
     return GeneratedDateTimeColumn(
       'timestamp',
@@ -349,37 +322,37 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id'], _idMeta));
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
     }
     if (data.containsKey('author')) {
       context.handle(_authorMeta,
-          author.isAcceptableOrUnknown(data['author'], _authorMeta));
+          author.isAcceptableOrUnknown(data['author']!, _authorMeta));
     } else if (isInserting) {
       context.missing(_authorMeta);
     }
     if (data.containsKey('guild')) {
       context.handle(
-          _guildMeta, guild.isAcceptableOrUnknown(data['guild'], _guildMeta));
+          _guildMeta, guild.isAcceptableOrUnknown(data['guild']!, _guildMeta));
     } else if (isInserting) {
       context.missing(_guildMeta);
     }
     if (data.containsKey('channel')) {
       context.handle(_channelMeta,
-          channel.isAcceptableOrUnknown(data['channel'], _channelMeta));
+          channel.isAcceptableOrUnknown(data['channel']!, _channelMeta));
     } else if (isInserting) {
       context.missing(_channelMeta);
     }
     if (data.containsKey('content')) {
       context.handle(_contentMeta,
-          content.isAcceptableOrUnknown(data['content'], _contentMeta));
+          content.isAcceptableOrUnknown(data['content']!, _contentMeta));
     } else if (isInserting) {
       context.missing(_contentMeta);
     }
     if (data.containsKey('timestamp')) {
       context.handle(_timestampMeta,
-          timestamp.isAcceptableOrUnknown(data['timestamp'], _timestampMeta));
+          timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta));
     } else if (isInserting) {
       context.missing(_timestampMeta);
     }
@@ -389,7 +362,7 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  Message map(Map<String, dynamic> data, {String tablePrefix}) {
+  Message map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : null;
     return Message.fromData(data, _db, prefix: effectivePrefix);
   }
@@ -407,64 +380,50 @@ class Attachment extends DataClass implements Insertable<Attachment> {
   final String url;
   final String filename;
   Attachment(
-      {@required this.id,
-      @required this.guild,
-      @required this.channel,
-      @required this.url,
-      @required this.filename});
+      {required this.id,
+      required this.guild,
+      required this.channel,
+      required this.url,
+      required this.filename});
   factory Attachment.fromData(Map<String, dynamic> data, GeneratedDatabase db,
-      {String prefix}) {
+      {String? prefix}) {
     final effectivePrefix = prefix ?? '';
-    final stringType = db.typeSystem.forDartType<String>();
     return Attachment(
-      id: stringType.mapFromDatabaseResponse(data['${effectivePrefix}id']),
-      guild:
-          stringType.mapFromDatabaseResponse(data['${effectivePrefix}guild']),
-      channel:
-          stringType.mapFromDatabaseResponse(data['${effectivePrefix}channel']),
-      url: stringType.mapFromDatabaseResponse(data['${effectivePrefix}url']),
-      filename: stringType
-          .mapFromDatabaseResponse(data['${effectivePrefix}filename']),
+      id: const StringType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}id'])!,
+      guild: const StringType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}guild'])!,
+      channel: const StringType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}channel'])!,
+      url: const StringType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}url'])!,
+      filename: const StringType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}filename'])!,
     );
   }
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    if (!nullToAbsent || id != null) {
-      map['id'] = Variable<String>(id);
-    }
-    if (!nullToAbsent || guild != null) {
-      map['guild'] = Variable<String>(guild);
-    }
-    if (!nullToAbsent || channel != null) {
-      map['channel'] = Variable<String>(channel);
-    }
-    if (!nullToAbsent || url != null) {
-      map['url'] = Variable<String>(url);
-    }
-    if (!nullToAbsent || filename != null) {
-      map['filename'] = Variable<String>(filename);
-    }
+    map['id'] = Variable<String>(id);
+    map['guild'] = Variable<String>(guild);
+    map['channel'] = Variable<String>(channel);
+    map['url'] = Variable<String>(url);
+    map['filename'] = Variable<String>(filename);
     return map;
   }
 
   AttachmentsCompanion toCompanion(bool nullToAbsent) {
     return AttachmentsCompanion(
-      id: id == null && nullToAbsent ? const Value.absent() : Value(id),
-      guild:
-          guild == null && nullToAbsent ? const Value.absent() : Value(guild),
-      channel: channel == null && nullToAbsent
-          ? const Value.absent()
-          : Value(channel),
-      url: url == null && nullToAbsent ? const Value.absent() : Value(url),
-      filename: filename == null && nullToAbsent
-          ? const Value.absent()
-          : Value(filename),
+      id: Value(id),
+      guild: Value(guild),
+      channel: Value(channel),
+      url: Value(url),
+      filename: Value(filename),
     );
   }
 
   factory Attachment.fromJson(Map<String, dynamic> json,
-      {ValueSerializer serializer}) {
+      {ValueSerializer? serializer}) {
     serializer ??= moorRuntimeOptions.defaultSerializer;
     return Attachment(
       id: serializer.fromJson<String>(json['id']),
@@ -475,7 +434,7 @@ class Attachment extends DataClass implements Insertable<Attachment> {
     );
   }
   @override
-  Map<String, dynamic> toJson({ValueSerializer serializer}) {
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= moorRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
@@ -487,11 +446,11 @@ class Attachment extends DataClass implements Insertable<Attachment> {
   }
 
   Attachment copyWith(
-          {String id,
-          String guild,
-          String channel,
-          String url,
-          String filename}) =>
+          {String? id,
+          String? guild,
+          String? channel,
+          String? url,
+          String? filename}) =>
       Attachment(
         id: id ?? this.id,
         guild: guild ?? this.guild,
@@ -517,7 +476,7 @@ class Attachment extends DataClass implements Insertable<Attachment> {
       $mrjc(guild.hashCode,
           $mrjc(channel.hashCode, $mrjc(url.hashCode, filename.hashCode)))));
   @override
-  bool operator ==(dynamic other) =>
+  bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Attachment &&
           other.id == this.id &&
@@ -541,22 +500,22 @@ class AttachmentsCompanion extends UpdateCompanion<Attachment> {
     this.filename = const Value.absent(),
   });
   AttachmentsCompanion.insert({
-    @required String id,
-    @required String guild,
-    @required String channel,
-    @required String url,
-    @required String filename,
+    required String id,
+    required String guild,
+    required String channel,
+    required String url,
+    required String filename,
   })  : id = Value(id),
         guild = Value(guild),
         channel = Value(channel),
         url = Value(url),
         filename = Value(filename);
   static Insertable<Attachment> custom({
-    Expression<String> id,
-    Expression<String> guild,
-    Expression<String> channel,
-    Expression<String> url,
-    Expression<String> filename,
+    Expression<String>? id,
+    Expression<String>? guild,
+    Expression<String>? channel,
+    Expression<String>? url,
+    Expression<String>? filename,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -568,11 +527,11 @@ class AttachmentsCompanion extends UpdateCompanion<Attachment> {
   }
 
   AttachmentsCompanion copyWith(
-      {Value<String> id,
-      Value<String> guild,
-      Value<String> channel,
-      Value<String> url,
-      Value<String> filename}) {
+      {Value<String>? id,
+      Value<String>? guild,
+      Value<String>? channel,
+      Value<String>? url,
+      Value<String>? filename}) {
     return AttachmentsCompanion(
       id: id ?? this.id,
       guild: guild ?? this.guild,
@@ -619,12 +578,11 @@ class AttachmentsCompanion extends UpdateCompanion<Attachment> {
 class $AttachmentsTable extends Attachments
     with TableInfo<$AttachmentsTable, Attachment> {
   final GeneratedDatabase _db;
-  final String _alias;
+  final String? _alias;
   $AttachmentsTable(this._db, [this._alias]);
   final VerificationMeta _idMeta = const VerificationMeta('id');
-  GeneratedTextColumn _id;
   @override
-  GeneratedTextColumn get id => _id ??= _constructId();
+  late final GeneratedTextColumn id = _constructId();
   GeneratedTextColumn _constructId() {
     return GeneratedTextColumn(
       'id',
@@ -634,9 +592,8 @@ class $AttachmentsTable extends Attachments
   }
 
   final VerificationMeta _guildMeta = const VerificationMeta('guild');
-  GeneratedTextColumn _guild;
   @override
-  GeneratedTextColumn get guild => _guild ??= _constructGuild();
+  late final GeneratedTextColumn guild = _constructGuild();
   GeneratedTextColumn _constructGuild() {
     return GeneratedTextColumn(
       'guild',
@@ -646,9 +603,8 @@ class $AttachmentsTable extends Attachments
   }
 
   final VerificationMeta _channelMeta = const VerificationMeta('channel');
-  GeneratedTextColumn _channel;
   @override
-  GeneratedTextColumn get channel => _channel ??= _constructChannel();
+  late final GeneratedTextColumn channel = _constructChannel();
   GeneratedTextColumn _constructChannel() {
     return GeneratedTextColumn(
       'channel',
@@ -658,9 +614,8 @@ class $AttachmentsTable extends Attachments
   }
 
   final VerificationMeta _urlMeta = const VerificationMeta('url');
-  GeneratedTextColumn _url;
   @override
-  GeneratedTextColumn get url => _url ??= _constructUrl();
+  late final GeneratedTextColumn url = _constructUrl();
   GeneratedTextColumn _constructUrl() {
     return GeneratedTextColumn(
       'url',
@@ -670,9 +625,8 @@ class $AttachmentsTable extends Attachments
   }
 
   final VerificationMeta _filenameMeta = const VerificationMeta('filename');
-  GeneratedTextColumn _filename;
   @override
-  GeneratedTextColumn get filename => _filename ??= _constructFilename();
+  late final GeneratedTextColumn filename = _constructFilename();
   GeneratedTextColumn _constructFilename() {
     return GeneratedTextColumn(
       'filename',
@@ -695,31 +649,31 @@ class $AttachmentsTable extends Attachments
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id'], _idMeta));
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
     }
     if (data.containsKey('guild')) {
       context.handle(
-          _guildMeta, guild.isAcceptableOrUnknown(data['guild'], _guildMeta));
+          _guildMeta, guild.isAcceptableOrUnknown(data['guild']!, _guildMeta));
     } else if (isInserting) {
       context.missing(_guildMeta);
     }
     if (data.containsKey('channel')) {
       context.handle(_channelMeta,
-          channel.isAcceptableOrUnknown(data['channel'], _channelMeta));
+          channel.isAcceptableOrUnknown(data['channel']!, _channelMeta));
     } else if (isInserting) {
       context.missing(_channelMeta);
     }
     if (data.containsKey('url')) {
       context.handle(
-          _urlMeta, url.isAcceptableOrUnknown(data['url'], _urlMeta));
+          _urlMeta, url.isAcceptableOrUnknown(data['url']!, _urlMeta));
     } else if (isInserting) {
       context.missing(_urlMeta);
     }
     if (data.containsKey('filename')) {
       context.handle(_filenameMeta,
-          filename.isAcceptableOrUnknown(data['filename'], _filenameMeta));
+          filename.isAcceptableOrUnknown(data['filename']!, _filenameMeta));
     } else if (isInserting) {
       context.missing(_filenameMeta);
     }
@@ -729,7 +683,7 @@ class $AttachmentsTable extends Attachments
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  Attachment map(Map<String, dynamic> data, {String tablePrefix}) {
+  Attachment map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : null;
     return Attachment.fromData(data, _db, prefix: effectivePrefix);
   }
@@ -744,44 +698,35 @@ class MessageAttachment extends DataClass
     implements Insertable<MessageAttachment> {
   final String messageId;
   final String attachmentId;
-  MessageAttachment({@required this.messageId, @required this.attachmentId});
+  MessageAttachment({required this.messageId, required this.attachmentId});
   factory MessageAttachment.fromData(
       Map<String, dynamic> data, GeneratedDatabase db,
-      {String prefix}) {
+      {String? prefix}) {
     final effectivePrefix = prefix ?? '';
-    final stringType = db.typeSystem.forDartType<String>();
     return MessageAttachment(
-      messageId: stringType
-          .mapFromDatabaseResponse(data['${effectivePrefix}message_id']),
-      attachmentId: stringType
-          .mapFromDatabaseResponse(data['${effectivePrefix}attachment_id']),
+      messageId: const StringType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}message_id'])!,
+      attachmentId: const StringType()
+          .mapFromDatabaseResponse(data['${effectivePrefix}attachment_id'])!,
     );
   }
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    if (!nullToAbsent || messageId != null) {
-      map['message_id'] = Variable<String>(messageId);
-    }
-    if (!nullToAbsent || attachmentId != null) {
-      map['attachment_id'] = Variable<String>(attachmentId);
-    }
+    map['message_id'] = Variable<String>(messageId);
+    map['attachment_id'] = Variable<String>(attachmentId);
     return map;
   }
 
   MessageAttachmentsCompanion toCompanion(bool nullToAbsent) {
     return MessageAttachmentsCompanion(
-      messageId: messageId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(messageId),
-      attachmentId: attachmentId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(attachmentId),
+      messageId: Value(messageId),
+      attachmentId: Value(attachmentId),
     );
   }
 
   factory MessageAttachment.fromJson(Map<String, dynamic> json,
-      {ValueSerializer serializer}) {
+      {ValueSerializer? serializer}) {
     serializer ??= moorRuntimeOptions.defaultSerializer;
     return MessageAttachment(
       messageId: serializer.fromJson<String>(json['messageId']),
@@ -789,7 +734,7 @@ class MessageAttachment extends DataClass
     );
   }
   @override
-  Map<String, dynamic> toJson({ValueSerializer serializer}) {
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= moorRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'messageId': serializer.toJson<String>(messageId),
@@ -797,7 +742,7 @@ class MessageAttachment extends DataClass
     };
   }
 
-  MessageAttachment copyWith({String messageId, String attachmentId}) =>
+  MessageAttachment copyWith({String? messageId, String? attachmentId}) =>
       MessageAttachment(
         messageId: messageId ?? this.messageId,
         attachmentId: attachmentId ?? this.attachmentId,
@@ -814,7 +759,7 @@ class MessageAttachment extends DataClass
   @override
   int get hashCode => $mrjf($mrjc(messageId.hashCode, attachmentId.hashCode));
   @override
-  bool operator ==(dynamic other) =>
+  bool operator ==(Object other) =>
       identical(this, other) ||
       (other is MessageAttachment &&
           other.messageId == this.messageId &&
@@ -829,13 +774,13 @@ class MessageAttachmentsCompanion extends UpdateCompanion<MessageAttachment> {
     this.attachmentId = const Value.absent(),
   });
   MessageAttachmentsCompanion.insert({
-    @required String messageId,
-    @required String attachmentId,
+    required String messageId,
+    required String attachmentId,
   })  : messageId = Value(messageId),
         attachmentId = Value(attachmentId);
   static Insertable<MessageAttachment> custom({
-    Expression<String> messageId,
-    Expression<String> attachmentId,
+    Expression<String>? messageId,
+    Expression<String>? attachmentId,
   }) {
     return RawValuesInsertable({
       if (messageId != null) 'message_id': messageId,
@@ -844,7 +789,7 @@ class MessageAttachmentsCompanion extends UpdateCompanion<MessageAttachment> {
   }
 
   MessageAttachmentsCompanion copyWith(
-      {Value<String> messageId, Value<String> attachmentId}) {
+      {Value<String>? messageId, Value<String>? attachmentId}) {
     return MessageAttachmentsCompanion(
       messageId: messageId ?? this.messageId,
       attachmentId: attachmentId ?? this.attachmentId,
@@ -876,12 +821,11 @@ class MessageAttachmentsCompanion extends UpdateCompanion<MessageAttachment> {
 class $MessageAttachmentsTable extends MessageAttachments
     with TableInfo<$MessageAttachmentsTable, MessageAttachment> {
   final GeneratedDatabase _db;
-  final String _alias;
+  final String? _alias;
   $MessageAttachmentsTable(this._db, [this._alias]);
   final VerificationMeta _messageIdMeta = const VerificationMeta('messageId');
-  GeneratedTextColumn _messageId;
   @override
-  GeneratedTextColumn get messageId => _messageId ??= _constructMessageId();
+  late final GeneratedTextColumn messageId = _constructMessageId();
   GeneratedTextColumn _constructMessageId() {
     return GeneratedTextColumn('message_id', $tableName, false,
         $customConstraints: 'REFERENCES Messages(id)');
@@ -889,10 +833,8 @@ class $MessageAttachmentsTable extends MessageAttachments
 
   final VerificationMeta _attachmentIdMeta =
       const VerificationMeta('attachmentId');
-  GeneratedTextColumn _attachmentId;
   @override
-  GeneratedTextColumn get attachmentId =>
-      _attachmentId ??= _constructAttachmentId();
+  late final GeneratedTextColumn attachmentId = _constructAttachmentId();
   GeneratedTextColumn _constructAttachmentId() {
     return GeneratedTextColumn('attachment_id', $tableName, false,
         $customConstraints: 'REFERENCES Attachments(id)');
@@ -913,7 +855,7 @@ class $MessageAttachmentsTable extends MessageAttachments
     final data = instance.toColumns(true);
     if (data.containsKey('message_id')) {
       context.handle(_messageIdMeta,
-          messageId.isAcceptableOrUnknown(data['message_id'], _messageIdMeta));
+          messageId.isAcceptableOrUnknown(data['message_id']!, _messageIdMeta));
     } else if (isInserting) {
       context.missing(_messageIdMeta);
     }
@@ -921,7 +863,7 @@ class $MessageAttachmentsTable extends MessageAttachments
       context.handle(
           _attachmentIdMeta,
           attachmentId.isAcceptableOrUnknown(
-              data['attachment_id'], _attachmentIdMeta));
+              data['attachment_id']!, _attachmentIdMeta));
     } else if (isInserting) {
       context.missing(_attachmentIdMeta);
     }
@@ -931,7 +873,7 @@ class $MessageAttachmentsTable extends MessageAttachments
   @override
   Set<GeneratedColumn> get $primaryKey => {messageId, attachmentId};
   @override
-  MessageAttachment map(Map<String, dynamic> data, {String tablePrefix}) {
+  MessageAttachment map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : null;
     return MessageAttachment.fromData(data, _db, prefix: effectivePrefix);
   }
@@ -944,13 +886,10 @@ class $MessageAttachmentsTable extends MessageAttachments
 
 abstract class _$RawData extends GeneratedDatabase {
   _$RawData(QueryExecutor e) : super(SqlTypeSystem.defaultInstance, e);
-  $MessagesTable _messages;
-  $MessagesTable get messages => _messages ??= $MessagesTable(this);
-  $AttachmentsTable _attachments;
-  $AttachmentsTable get attachments => _attachments ??= $AttachmentsTable(this);
-  $MessageAttachmentsTable _messageAttachments;
-  $MessageAttachmentsTable get messageAttachments =>
-      _messageAttachments ??= $MessageAttachmentsTable(this);
+  late final $MessagesTable messages = $MessagesTable(this);
+  late final $AttachmentsTable attachments = $AttachmentsTable(this);
+  late final $MessageAttachmentsTable messageAttachments =
+      $MessageAttachmentsTable(this);
   @override
   Iterable<TableInfo> get allTables => allSchemaEntities.whereType<TableInfo>();
   @override

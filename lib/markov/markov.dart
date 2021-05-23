@@ -29,7 +29,7 @@ class Markov {
   /// Trains the markov chain off of [tokens], converting them into [Word] objects
   static Future<MetaData> train(
       MetaData metadata, Map<String, Word> wordMap, List<String> tokens) async {
-    var kb = Injector.appInstance.getDependency<KnowledgeBase>();
+    var kb = Injector.appInstance.get<KnowledgeBase>();
 
     var _msgCount = metadata.msgCount + 1;
     var _wordCount = metadata.wordCount;
@@ -51,12 +51,11 @@ class Markov {
 
       Word word;
 
-      if (wordMap.containsKey(key)) {
-        word = wordMap[key];
-      } else {
-        _wordCount++;
-        word = WordExtensions.constructWord(key, tokens[i]);
-      }
+      word = wordMap[key] ??
+          () {
+            _wordCount++;
+            return WordExtensions.constructWord(key, tokens[i]);
+          }();
 
       var _totalOccurances = word.totalOccurances;
       var _msgOccurances = word.msgOccurances;
@@ -103,12 +102,12 @@ class Markov {
   }
 
   static Future<String> generate(List<String> tokens) async {
-    var kb = Injector.appInstance.getDependency<KnowledgeBase>();
+    var kb = Injector.appInstance.get<KnowledgeBase>();
     var rand = Random(DateTime.now().millisecondsSinceEpoch);
 
     var metadata = await kb.getMetadata();
 
-    Word anchor;
+    Word? anchor;
 
     if (tokens.isNotEmpty) {
       var words = <double, Word>{};
@@ -129,68 +128,81 @@ class Markov {
 
       var r = rand.nextDouble() * sumOfWeights;
 
-      for (var key in words.keys) {
-        r -= key;
+      for (var entry in words.entries) {
+        r -= entry.key;
 
         if (r <= 0) {
-          anchor = words[key];
+          anchor = entry.value;
           break;
         }
       }
-    } else {
-      anchor = await kb.randomWord().getSingle();
     }
+
+    anchor ??= await kb.randomWord().getSingle();
 
     var prefixWords = <Word>[];
     var prefixCount = anchor.randomDistFromHead(rand.nextDouble());
 
     if (prefixCount > 0) {
-      prefixWords.add(await anchor.randomPrefix(rand.nextDouble()));
-      prefixCount--;
-    }
+      prefixWords.add((await anchor.randomPrefix(rand
+          .nextDouble()))!); // using null-check here since, if [prefixCount] > 0 then [randomPrefix] can't return null
 
-    while (prefixCount > 0) {
-      if (prefixWords.first.prefixes.isNotEmpty) {
+      while (prefixWords.first.prefixes.isNotEmpty) {
         var prefix = await prefixWords.first.randomPrefix(rand.nextDouble());
-        prefixWords.insert(0, prefix);
-      } else {
-        prefixCount = 0;
-        break;
-      }
+        prefixWords.insert(0,
+            prefix!); // null-check used here here because of the while condition above
 
-      prefixCount--;
+        if (prefixWords.length >= prefixCount) {
+          if (prefix.distFromHead.containsKey(0)) {
+            break;
+          } else if (prefixWords.length / prefixCount > 1.5) {
+            var lastHeadIndex = prefixWords
+                .takeWhile((word) => !word.distFromHead.containsKey(0))
+                .length;
+
+            if (lastHeadIndex < prefixWords.length) {
+              prefixWords.removeRange(0, lastHeadIndex);
+            }
+
+            break;
+          }
+        }
+      }
     }
 
     var suffixWords = <Word>[];
     var suffixCount = anchor.randomDistFromTail(rand.nextDouble());
 
     if (suffixCount > 0) {
-      suffixWords.add(await anchor.randomSuffix(rand.nextDouble()));
-      suffixCount--;
+      suffixWords.add((await anchor
+          .randomSuffix(rand.nextDouble()))!); // null-check same as above
 
       while (suffixWords.last.suffixes.isNotEmpty) {
-        // if (suffixCount > 0) {
-        suffixCount--;
-        // }
-
         var suffix = await suffixWords.last.randomSuffix(rand.nextDouble());
-        suffixWords.add(suffix);
+        suffixWords.add(suffix!); // null-check same as above
 
-        if (suffixCount <= 0 && suffix.distFromTail.containsKey(0)) {
-          break;
+        if (suffixWords.length >= suffixCount) {
+          if (suffix.distFromTail.containsKey(0)) {
+            break;
+          } else if (suffixWords.length / suffixCount > 1.5) {
+            var lastTailIndex = suffixWords.reversed
+                .takeWhile((word) => !word.distFromTail.containsKey(0))
+                .length;
+
+            if (lastTailIndex < suffixWords.length) {
+              suffixWords.removeRange(lastTailIndex + 1, suffixWords.length);
+            }
+
+            break;
+          }
         }
       }
     }
 
-    // while (suffixCount > 0) {
-    //   if (suffixWords.last.suffixes.isNotEmpty) {
-    //     var suffix = suffixWords.last.randomSuffix(rand.nextDouble());
-    //     suffixWords.add(suffix);
-    //   } else {
-    //     suffixCount = 0;
-    //     break;
-    //   }
-    // }
+    print(
+        'Attempting to generate $prefixCount prefixes and $suffixCount suffixes...');
+    print(
+        'Generated ${prefixWords.length} prefixes and ${suffixWords.length} suffixes.');
 
     return '${prefixWords.map((w) => w.word).toList().join(' ')} ${anchor.word} ${suffixWords.map((w) => w.word).toList().join(' ')}';
   }
