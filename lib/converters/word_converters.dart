@@ -6,7 +6,7 @@ class StringIntMapConverter extends TypeConverter<Map<String, int>, String> {
   const StringIntMapConverter();
 
   @override
-  Map<String, int> mapToDart(String fromDb) {
+  Map<String, int>? mapToDart(String? fromDb) {
     if (fromDb == null) {
       return null;
     }
@@ -16,7 +16,7 @@ class StringIntMapConverter extends TypeConverter<Map<String, int>, String> {
   }
 
   @override
-  String mapToSql(Map<String, int> value) {
+  String? mapToSql(Map<String, int>? value) {
     if (value == null) {
       return null;
     }
@@ -29,7 +29,7 @@ class IntIntMapConverter extends TypeConverter<Map<int, int>, String> {
   const IntIntMapConverter();
 
   @override
-  Map<int, int> mapToDart(String fromDb) {
+  Map<int, int>? mapToDart(String? fromDb) {
     if (fromDb == null) {
       return null;
     }
@@ -39,7 +39,7 @@ class IntIntMapConverter extends TypeConverter<Map<int, int>, String> {
   }
 
   @override
-  String mapToSql(Map<int, int> value) {
+  String? mapToSql(Map<int, int>? value) {
     if (value == null) {
       return null;
     }

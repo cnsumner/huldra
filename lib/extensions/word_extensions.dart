@@ -18,19 +18,20 @@ extension WordExtensions on Word {
   }
 
   /// Performs a weighted random selection on [map] using [r] as the random value
-  Future<Word> _weightedRandomWordSelection(
+  Future<Word?> _weightedRandomWordSelection(
       double r, Map<String, int> map) async {
     if (map.isNotEmpty) {
-      var kb = Injector.appInstance.getDependency<KnowledgeBase>();
-      var sumOfWeights = map.values.fold(0, (prev, element) => prev + element);
+      var kb = Injector.appInstance.get<KnowledgeBase>();
+      var sumOfWeights =
+          map.values.fold<int>(0, (prev, element) => prev + element);
 
       r = r * sumOfWeights;
 
-      for (var key in map.keys) {
-        r -= map[key];
+      for (var entry in map.entries) {
+        r -= entry.value;
 
         if (r <= 0) {
-          return kb.getWord(key);
+          return kb.getWord(entry.key);
         }
       }
     }
@@ -42,15 +43,15 @@ extension WordExtensions on Word {
   int _weightedRandomDistSelection(double r, Map<int, int> map) {
     if (map.isNotEmpty) {
       var sumOfWeights =
-          map.values.fold(0, (prev, element) => prev + log(element));
+          map.values.fold<num>(0, (prev, element) => prev + log(element));
 
       r = r * sumOfWeights;
 
-      for (var key in map.keys) {
-        r -= log(map[key]);
+      for (var entry in map.entries) {
+        r -= log(entry.value);
 
         if (r <= 0) {
-          return key;
+          return entry.key;
         }
       }
     }
@@ -59,12 +60,12 @@ extension WordExtensions on Word {
   }
 
   /// Performs a weighted random selection on [prefixes] using [r] as the random value
-  Future<Word> randomPrefix(double r) async {
+  Future<Word?> randomPrefix(double r) async {
     return _weightedRandomWordSelection(r, prefixes);
   }
 
   /// Performs a weighted random selection on [suffixes] using [r] as the random value
-  Future<Word> randomSuffix(double r) async {
+  Future<Word?> randomSuffix(double r) async {
     return _weightedRandomWordSelection(r, suffixes);
   }
 
@@ -79,23 +80,31 @@ extension WordExtensions on Word {
   }
 
   Future<String> toFormattedString() async {
-    var kb = Injector.appInstance.getDependency<KnowledgeBase>();
+    var kb = Injector.appInstance.get<KnowledgeBase>();
 
-    var topPrefixes = prefixes.keys.toList();
-    topPrefixes.sort((a, b) {
-      return prefixes[b].compareTo(prefixes[a]);
-    });
+    var topPrefixes = () {
+      var sorted = prefixes.entries.toList()
+        ..sort((a, b) {
+          return b.value.compareTo(a.value);
+        });
 
-    var topSuffixes = suffixes.keys.toList();
-    topSuffixes.sort((a, b) {
-      return suffixes[b].compareTo(suffixes[a]);
-    });
+      return sorted.map((e) => e.key);
+    }();
+
+    var topSuffixes = () {
+      var sorted = suffixes.entries.toList()
+        ..sort((a, b) {
+          return b.value.compareTo(a.value);
+        });
+
+      return sorted.map((e) => e.key);
+    }();
 
     var topPrefix = topPrefixes.isNotEmpty
-        ? (await kb.getWord(topPrefixes.first))?.word
+        ? (await kb.getWord(topPrefixes.first)).word
         : '';
     var topSuffix = topSuffixes.isNotEmpty
-        ? (await kb.getWord(topSuffixes.first))?.word
+        ? (await kb.getWord(topSuffixes.first)).word
         : '';
 
     return '''```

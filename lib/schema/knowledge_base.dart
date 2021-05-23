@@ -58,14 +58,10 @@ class KnowledgeBase extends _$KnowledgeBase {
       .get();
 
   Future<MetaData> getMetadata() async {
-    return select(meta).getSingle().then((value) async {
-      if (value == null) {
-        return into(meta)
-            .insert(MetaData(id: 1, msgCount: 0, wordCount: 0))
-            .then<MetaData>((_) => select(meta).getSingle());
-      } else {
-        return value;
-      }
+    return select(meta).getSingle().onError((error, stackTrace) {
+      return into(meta)
+          .insert(MetaData(id: 1, msgCount: 0, wordCount: 0))
+          .then<MetaData>((_) => select(meta).getSingle());
     });
   }
 

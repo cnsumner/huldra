@@ -4,10 +4,10 @@ import 'dart:io';
 import 'package:huldra/huldra.dart';
 import 'package:huldra/schema/knowledge_base.dart';
 import 'package:huldra/schema/raw_data.dart';
+import 'package:huldra/yaml_config.dart';
 import 'package:injector/injector.dart';
 import 'package:moor/ffi.dart';
 import 'package:sqlite3/open.dart';
-import 'package:yaml_config/yaml_config.dart';
 
 // 07/01/2018
 
@@ -22,27 +22,27 @@ void main() async {
 
   // register dependencies
   await YamlConfig.fromFile(File('$basePath/config.yaml')).then((result) {
-    injector.registerSingleton<YamlConfig>((_) => result);
+    injector.registerSingleton<YamlConfig>(() => result);
   });
 
-  injector.registerSingleton<RawData>((_) {
+  injector.registerSingleton<RawData>(() {
     if (Platform.isWindows) {
       open.overrideFor(OperatingSystem.windows, () {
-        return DynamicLibrary.open('${basePath}/sqlite3.dll');
+        return DynamicLibrary.open('$basePath/sqlite3.dll');
       });
     }
-    var rawDataFile = File('${basePath}/rawData.sqlite');
+    var rawDataFile = File('$basePath/rawData.sqlite');
 
     return RawData(VmDatabase(rawDataFile));
   });
 
-  injector.registerSingleton<KnowledgeBase>((_) {
+  injector.registerSingleton<KnowledgeBase>(() {
     if (Platform.isWindows) {
       open.overrideFor(OperatingSystem.windows, () {
-        return DynamicLibrary.open('${basePath}/sqlite3.dll');
+        return DynamicLibrary.open('$basePath/sqlite3.dll');
       });
     }
-    var kbFile = File('${basePath}/kb.sqlite');
+    var kbFile = File('$basePath/kb.sqlite');
 
     return KnowledgeBase(VmDatabase(kbFile));
   });
