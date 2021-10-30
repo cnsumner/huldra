@@ -136,7 +136,7 @@ class Huldra {
       var metadata = await kb.getMetadata();
       var wordMap = <String, Word>{};
       metadata = await Markov.train(metadata, wordMap,
-          message.content.replaceFirst('<@!674451490743779339>', '').split(' ')..removeWhere((word) => word == ''));
+          message.content.replaceFirst('<@!${bot.self.id.id}>', '').split(' ')..removeWhere((word) => word == ''));
 
       await kb.updateMetadata(metadata);
       await kb.updateWords(wordMap.entries.map<Word>((entry) => entry.value).toList(growable: false));
@@ -259,7 +259,7 @@ class Huldra {
       var wordMap = <String, Word>{};
 
       for (var message in messages) {
-        var tokens = message.content.replaceFirst('<@!674451490743779339>', '').split(' ')
+        var tokens = message.content.replaceFirst('<@!${bot.self.id.id}>', '').split(' ')
           ..removeWhere((token) => token == '');
 
         metadata = await Markov.train(metadata, wordMap, tokens);
