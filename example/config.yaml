@@ -1,0 +1,3 @@
+discordToken: <discord bot token goes here> #the discord bot account token from the discord developer portal
+owner: <bot owner id goes here> #the id of the discord user who should have admin permissions for this bot
+probability: 1000 #the number of messages (on average) that should pass between each bot reply
