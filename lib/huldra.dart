@@ -12,12 +12,14 @@ import 'package:huldra/extensions/word_extensions.dart';
 class Huldra {
   late Nyxx bot;
   late int probability;
+  late int ownerId;
 
   Huldra() {
     var _config = Injector.appInstance.get<YamlConfig>();
 
     bot = Nyxx(_config.getString('discordToken'), GatewayIntents.allUnprivileged);
     probability = _config.getInt('probability');
+    ownerId = _config.getInt('ownerId');
 
     var kb = Injector.appInstance.get<KnowledgeBase>();
 
@@ -146,14 +148,14 @@ class Huldra {
   }
 
   Future<void> _processCommands(MessageReceivedEvent e) async {
-    if (e.message.content.startsWith('_fetch') && e.message.author.id.id == _config.getInt('owner')) {
+    if (e.message.content.startsWith('_fetch') && e.message.author.id.id == ownerId) {
       var arguments = e.message.content.split(' ')..removeAt(0);
       if (arguments.isNotEmpty) {
         _fetchMessages(Snowflake(arguments[0]));
       } else {
         // reply with error
       }
-    } else if (e.message.content.startsWith('_trainall') && e.message.author.id.id == _config.getInt('owner')) {
+    } else if (e.message.content.startsWith('_trainall') && e.message.author.id.id == ownerId) {
       _trainAll();
     } else if (e.message.content.startsWith('_query')) {
       var arguments = e.message.content.split(' ')..removeAt(0);
