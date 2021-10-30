@@ -158,7 +158,7 @@ class Huldra {
       metadata = await Markov.train(
           metadata,
           wordMap,
-          message.content.replaceFirst('<@!674451490743779339>', '').split(' ')
+          message.content.replaceFirst(${bot.self.id.id}, '').split(' ')
             ..removeWhere((word) => word == ''));
 
       await kb.updateMetadata(metadata);
@@ -297,7 +297,7 @@ class Huldra {
 
       for (var message in messages) {
         var tokens = message.content
-            .replaceFirst('<@!674451490743779339>', '')
+            .replaceFirst(${bot.self.id.id}, '')
             .split(' ')
               ..removeWhere((token) => token == '');
 
