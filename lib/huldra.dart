@@ -172,7 +172,7 @@ class Huldra {
 
   Future<void> _processCommands(MessageReceivedEvent e) async {
     if (e.message.content.startsWith('_fetch') &&
-        e.message.author.id.id == 96407239232884736) {
+        e.message.author.id.id == _config.getInt('owner')) {
       var arguments = e.message.content.split(' ')..removeAt(0);
       if (arguments.isNotEmpty) {
         _fetchMessages(Snowflake(arguments[0]));
@@ -180,7 +180,7 @@ class Huldra {
         // reply with error
       }
     } else if (e.message.content.startsWith('_trainall') &&
-        e.message.author.id.id == 96407239232884736) {
+        e.message.author.id.id == _config.getInt('owner')) {
       _trainAll();
     } else if (e.message.content.startsWith('_query')) {
       var arguments = e.message.content.split(' ')..removeAt(0);
