@@ -77,6 +77,39 @@ class RawData extends _$RawData {
     });
   }
 
+  Future<int> insertMessages(
+      List<Message> messageList,
+      List<Attachment> attachmentList,
+      List<MessageAttachment> messageAttachmentList) {
+    return transaction<int>(() async {
+      var countQuery =
+          (selectOnly(messages)..addColumns([messages.id.count()]));
+
+      var messageCount =
+          (await countQuery.getSingle()).read(messages.id.count()) ?? 0;
+
+      await batch((batch) {
+        batch.insertAll(messages, messageList, mode: InsertMode.insertOrIgnore);
+      });
+
+      var insertedMessagesCount =
+          ((await countQuery.getSingle()).read(messages.id.count()) ?? 0) -
+              messageCount;
+
+      await batch((batch) {
+        batch.insertAll(attachments, attachmentList,
+            mode: InsertMode.insertOrIgnore);
+      });
+
+      await batch((batch) {
+        batch.insertAll(messageAttachments, messageAttachmentList,
+            mode: InsertMode.insertOrIgnore);
+      });
+
+      return Future.value(insertedMessagesCount);
+    });
+  }
+
   @override
   MigrationStrategy get migration =>
       MigrationStrategy(beforeOpen: (details) async {

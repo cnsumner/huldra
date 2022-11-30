@@ -111,12 +111,6 @@ class Huldra {
       return false;
     }
 
-    if (!_channelTypeValid(await m.channel.getOrDownload())) {
-      print(
-          'Skipping message ${m.id.id}: message not from text channel or thread. Channel id: ${m.channel.id.id}');
-      return false;
-    }
-
     var message = tables.Message(
         id: m.id.toString(),
         guild: guildId.id.toString(),
@@ -190,6 +184,48 @@ class Huldra {
     }
   }
 
+  Future<int> _addMessages(List<IMessage> messages, Snowflake guildId) async {
+    var initialCount = messages.length;
+
+    messages.removeWhere((m) => m.author.bot);
+
+    _printLogIf('Skipping ${initialCount - messages.length} bot messages...',
+        initialCount - messages.length > 0);
+
+    var dbMessages = messages
+        .map((m) => tables.Message(
+            id: m.id.toString(),
+            guild: guildId.id.toString(),
+            channel: m.channel.id.toString(),
+            author: m.author.id.toString(),
+            timestamp: m.createdAt,
+            content: m.content))
+        .toList();
+
+    var dbAttachments = <tables.Attachment>[];
+    var dbMessageAttachments = <tables.MessageAttachment>[];
+
+    messages.forEach((m) {
+      if (m.attachments.isNotEmpty) {
+        m.attachments.forEach((attachment) {
+          dbAttachments.add(tables.Attachment(
+              id: attachment.id.toString(),
+              guild: guildId.id.toString(),
+              channel: m.channel.id.toString(),
+              url: attachment.url,
+              filename: attachment.filename));
+          dbMessageAttachments.add(tables.MessageAttachment(
+              attachmentId: attachment.id.toString(),
+              messageId: m.id.toString()));
+        });
+      }
+    });
+
+    return await Injector.appInstance
+        .get<tables.RawData>()
+        .insertMessages(dbMessages, dbAttachments, dbMessageAttachments);
+  }
+
   Future<void> _processCommands(IMessageReceivedEvent e) async {
     if (e.message.content.startsWith('_fetch') &&
         e.message.author.id.id == ownerId) {
@@ -216,8 +252,8 @@ class Huldra {
     }
   }
 
-  void _fetchMessages(Snowflake guildId, Snowflake starId) async {
-    print('Fetching messages after ${starId.id}');
+  void _fetchMessages(Snowflake guildId, Snowflake startId) async {
+    print('Fetching messages after ${startId.id}');
 
     var guild = await bot.fetchGuild(guildId);
 
@@ -226,16 +262,20 @@ class Huldra {
     var channels =
         guild.channels.where((channel) => _channelTypeValid(channel));
 
-    var countAdded = 0;
+    var totalCountAdded = 0;
+    var totalCountFetched = 0;
 
     for (var channel in channels) {
       if (!(await channel.effectivePermissions(botMember)).readMessageHistory) {
-        print("Skipping channel we don't have read permissions for");
+        print('Skipping channel [${channel.name}]: no read permission');
         continue;
       }
 
+      var channelCountAdded = 0;
+      var channelCountFetched = 0;
+
       var messages = <IMessage>[];
-      var lastId = starId;
+      var lastId = startId;
 
       while (true) {
         var messageSubset = await channel.client.httpEndpoints
@@ -248,32 +288,44 @@ class Huldra {
           break;
         }
 
+        channelCountFetched += messageSubset.length;
+        totalCountFetched += messageSubset.length;
+
         lastId = messageSubset.last.id;
 
-        print(
-            'Fetched ${countAdded + messages.length} messages up to ${messageSubset.last.createdAt}...');
+        _printLogIf(
+            'Fetched $totalCountFetched messages so far, up to ${messageSubset.last.createdAt}...',
+            totalCountFetched > 0);
+
         await Future.delayed(Duration(milliseconds: 300));
 
-        if (messages.length >= 5000) {
-          print('Buffer full, writing 10k messages to db.');
+        if (messages.length >= 1000) {
+          print('Buffer full, writing 1k messages to db...');
 
-          var results = await Future.wait(messages.map<Future<bool>>(
-              (m) => _addMessage(m, guild.id, printDebugLogs: false)));
+          var results = await _addMessages(messages, guild.id);
 
-          countAdded += results.where((r) => true).length;
+          print('Wrote $results messages to database');
+
+          totalCountAdded += results;
+          channelCountAdded += results;
           messages.clear();
         }
       }
 
-      var results = await Future.wait(messages.map<Future<bool>>(
-          (m) => _addMessage(m, guild.id, printDebugLogs: false)));
+      var results = await _addMessages(messages, guild.id);
+      _printLogIf('Wrote $results messages to database', results > 0);
 
-      countAdded += results.where((r) => true).length;
+      totalCountAdded += results;
+      channelCountAdded += results;
 
-      print('Fetched ${messages.length} messages from channel ${channel.name}');
+      print((channelCountFetched > 0
+              ? 'Added $channelCountAdded out of $channelCountFetched messages'
+              : 'No messages to add') +
+          ' from channel ${channel.name}');
     }
 
-    print('Fetched all $countAdded messages from ${channels.length} channels.');
+    print(
+        'Added $totalCountAdded out of $totalCountFetched messages from ${channels.length} channels. Run `_trainAll` to sync the knowledgebase');
   }
 
   void _trainAll() async {
