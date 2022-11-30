@@ -1,5 +1,5 @@
 import 'package:huldra/converters/word_converters.dart';
-import 'package:moor/moor.dart';
+import 'package:drift/drift.dart';
 
 part 'knowledge_base.g.dart';
 
@@ -26,7 +26,7 @@ class Meta extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@UseMoor(tables: [
+@DriftDatabase(tables: [
   Words,
   Meta
 ], queries: {

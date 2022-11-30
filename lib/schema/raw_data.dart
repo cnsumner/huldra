@@ -1,4 +1,4 @@
-import 'package:moor/moor.dart';
+import 'package:drift/drift.dart';
 
 part 'raw_data.g.dart';
 
@@ -35,7 +35,7 @@ class MessageAttachments extends Table {
   Set<Column> get primaryKey => {messageId, attachmentId};
 }
 
-@UseMoor(tables: [Messages, Attachments, MessageAttachments])
+@DriftDatabase(tables: [Messages, Attachments, MessageAttachments])
 class RawData extends _$RawData {
   RawData(QueryExecutor e) : super(e);
 

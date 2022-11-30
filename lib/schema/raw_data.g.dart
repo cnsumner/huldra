@@ -2,11 +2,7 @@
 
 part of 'raw_data.dart';
 
-// **************************************************************************
-// MoorGenerator
-// **************************************************************************
-
-// ignore_for_file: unnecessary_brace_in_string_interps, unnecessary_this
+// ignore_for_file: type=lint
 class Message extends DataClass implements Insertable<Message> {
   final String id;
   final String author;
@@ -14,31 +10,13 @@ class Message extends DataClass implements Insertable<Message> {
   final String channel;
   final String content;
   final DateTime timestamp;
-  Message(
+  const Message(
       {required this.id,
       required this.author,
       required this.guild,
       required this.channel,
       required this.content,
       required this.timestamp});
-  factory Message.fromData(Map<String, dynamic> data, GeneratedDatabase db,
-      {String? prefix}) {
-    final effectivePrefix = prefix ?? '';
-    return Message(
-      id: const StringType()
-          .mapFromDatabaseResponse(data['${effectivePrefix}id'])!,
-      author: const StringType()
-          .mapFromDatabaseResponse(data['${effectivePrefix}author'])!,
-      guild: const StringType()
-          .mapFromDatabaseResponse(data['${effectivePrefix}guild'])!,
-      channel: const StringType()
-          .mapFromDatabaseResponse(data['${effectivePrefix}channel'])!,
-      content: const StringType()
-          .mapFromDatabaseResponse(data['${effectivePrefix}content'])!,
-      timestamp: const DateTimeType()
-          .mapFromDatabaseResponse(data['${effectivePrefix}timestamp'])!,
-    );
-  }
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -64,7 +42,7 @@ class Message extends DataClass implements Insertable<Message> {
 
   factory Message.fromJson(Map<String, dynamic> json,
       {ValueSerializer? serializer}) {
-    serializer ??= moorRuntimeOptions.defaultSerializer;
+    serializer ??= driftRuntimeOptions.defaultSerializer;
     return Message(
       id: serializer.fromJson<String>(json['id']),
       author: serializer.fromJson<String>(json['author']),
@@ -76,7 +54,7 @@ class Message extends DataClass implements Insertable<Message> {
   }
   @override
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= moorRuntimeOptions.defaultSerializer;
+    serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'author': serializer.toJson<String>(author),
@@ -116,14 +94,8 @@ class Message extends DataClass implements Insertable<Message> {
   }
 
   @override
-  int get hashCode => $mrjf($mrjc(
-      id.hashCode,
-      $mrjc(
-          author.hashCode,
-          $mrjc(
-              guild.hashCode,
-              $mrjc(channel.hashCode,
-                  $mrjc(content.hashCode, timestamp.hashCode))))));
+  int get hashCode =>
+      Object.hash(id, author, guild, channel, content, timestamp);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -238,84 +210,50 @@ class MessagesCompanion extends UpdateCompanion<Message> {
 }
 
 class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
-  final GeneratedDatabase _db;
+  @override
+  final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $MessagesTable(this._db, [this._alias]);
-  final VerificationMeta _idMeta = const VerificationMeta('id');
+  $MessagesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedTextColumn id = _constructId();
-  GeneratedTextColumn _constructId() {
-    return GeneratedTextColumn(
-      'id',
-      $tableName,
-      false,
-    );
-  }
-
-  final VerificationMeta _authorMeta = const VerificationMeta('author');
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _authorMeta = const VerificationMeta('author');
   @override
-  late final GeneratedTextColumn author = _constructAuthor();
-  GeneratedTextColumn _constructAuthor() {
-    return GeneratedTextColumn(
-      'author',
-      $tableName,
-      false,
-    );
-  }
-
-  final VerificationMeta _guildMeta = const VerificationMeta('guild');
+  late final GeneratedColumn<String> author = GeneratedColumn<String>(
+      'author', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _guildMeta = const VerificationMeta('guild');
   @override
-  late final GeneratedTextColumn guild = _constructGuild();
-  GeneratedTextColumn _constructGuild() {
-    return GeneratedTextColumn(
-      'guild',
-      $tableName,
-      false,
-    );
-  }
-
-  final VerificationMeta _channelMeta = const VerificationMeta('channel');
+  late final GeneratedColumn<String> guild = GeneratedColumn<String>(
+      'guild', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _channelMeta =
+      const VerificationMeta('channel');
   @override
-  late final GeneratedTextColumn channel = _constructChannel();
-  GeneratedTextColumn _constructChannel() {
-    return GeneratedTextColumn(
-      'channel',
-      $tableName,
-      false,
-    );
-  }
-
-  final VerificationMeta _contentMeta = const VerificationMeta('content');
+  late final GeneratedColumn<String> channel = GeneratedColumn<String>(
+      'channel', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _contentMeta =
+      const VerificationMeta('content');
   @override
-  late final GeneratedTextColumn content = _constructContent();
-  GeneratedTextColumn _constructContent() {
-    return GeneratedTextColumn(
-      'content',
-      $tableName,
-      false,
-    );
-  }
-
-  final VerificationMeta _timestampMeta = const VerificationMeta('timestamp');
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+      'content', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _timestampMeta =
+      const VerificationMeta('timestamp');
   @override
-  late final GeneratedDateTimeColumn timestamp = _constructTimestamp();
-  GeneratedDateTimeColumn _constructTimestamp() {
-    return GeneratedDateTimeColumn(
-      'timestamp',
-      $tableName,
-      false,
-    );
-  }
-
+  late final GeneratedColumn<DateTime> timestamp = GeneratedColumn<DateTime>(
+      'timestamp', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
   @override
   List<GeneratedColumn> get $columns =>
       [id, author, guild, channel, content, timestamp];
   @override
-  $MessagesTable get asDslTable => this;
+  String get aliasedName => _alias ?? 'messages';
   @override
-  String get $tableName => _alias ?? 'messages';
-  @override
-  final String actualTableName = 'messages';
+  String get actualTableName => 'messages';
   @override
   VerificationContext validateIntegrity(Insertable<Message> instance,
       {bool isInserting = false}) {
@@ -363,13 +301,26 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
   Message map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : null;
-    return Message.fromData(data, _db, prefix: effectivePrefix);
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Message(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      author: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}author'])!,
+      guild: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}guild'])!,
+      channel: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}channel'])!,
+      content: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}content'])!,
+      timestamp: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}timestamp'])!,
+    );
   }
 
   @override
   $MessagesTable createAlias(String alias) {
-    return $MessagesTable(_db, alias);
+    return $MessagesTable(attachedDatabase, alias);
   }
 }
 
@@ -379,28 +330,12 @@ class Attachment extends DataClass implements Insertable<Attachment> {
   final String channel;
   final String url;
   final String filename;
-  Attachment(
+  const Attachment(
       {required this.id,
       required this.guild,
       required this.channel,
       required this.url,
       required this.filename});
-  factory Attachment.fromData(Map<String, dynamic> data, GeneratedDatabase db,
-      {String? prefix}) {
-    final effectivePrefix = prefix ?? '';
-    return Attachment(
-      id: const StringType()
-          .mapFromDatabaseResponse(data['${effectivePrefix}id'])!,
-      guild: const StringType()
-          .mapFromDatabaseResponse(data['${effectivePrefix}guild'])!,
-      channel: const StringType()
-          .mapFromDatabaseResponse(data['${effectivePrefix}channel'])!,
-      url: const StringType()
-          .mapFromDatabaseResponse(data['${effectivePrefix}url'])!,
-      filename: const StringType()
-          .mapFromDatabaseResponse(data['${effectivePrefix}filename'])!,
-    );
-  }
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -424,7 +359,7 @@ class Attachment extends DataClass implements Insertable<Attachment> {
 
   factory Attachment.fromJson(Map<String, dynamic> json,
       {ValueSerializer? serializer}) {
-    serializer ??= moorRuntimeOptions.defaultSerializer;
+    serializer ??= driftRuntimeOptions.defaultSerializer;
     return Attachment(
       id: serializer.fromJson<String>(json['id']),
       guild: serializer.fromJson<String>(json['guild']),
@@ -435,7 +370,7 @@ class Attachment extends DataClass implements Insertable<Attachment> {
   }
   @override
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= moorRuntimeOptions.defaultSerializer;
+    serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'guild': serializer.toJson<String>(guild),
@@ -471,10 +406,7 @@ class Attachment extends DataClass implements Insertable<Attachment> {
   }
 
   @override
-  int get hashCode => $mrjf($mrjc(
-      id.hashCode,
-      $mrjc(guild.hashCode,
-          $mrjc(channel.hashCode, $mrjc(url.hashCode, filename.hashCode)))));
+  int get hashCode => Object.hash(id, guild, channel, url, filename);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -577,72 +509,43 @@ class AttachmentsCompanion extends UpdateCompanion<Attachment> {
 
 class $AttachmentsTable extends Attachments
     with TableInfo<$AttachmentsTable, Attachment> {
-  final GeneratedDatabase _db;
+  @override
+  final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $AttachmentsTable(this._db, [this._alias]);
-  final VerificationMeta _idMeta = const VerificationMeta('id');
+  $AttachmentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedTextColumn id = _constructId();
-  GeneratedTextColumn _constructId() {
-    return GeneratedTextColumn(
-      'id',
-      $tableName,
-      false,
-    );
-  }
-
-  final VerificationMeta _guildMeta = const VerificationMeta('guild');
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _guildMeta = const VerificationMeta('guild');
   @override
-  late final GeneratedTextColumn guild = _constructGuild();
-  GeneratedTextColumn _constructGuild() {
-    return GeneratedTextColumn(
-      'guild',
-      $tableName,
-      false,
-    );
-  }
-
-  final VerificationMeta _channelMeta = const VerificationMeta('channel');
+  late final GeneratedColumn<String> guild = GeneratedColumn<String>(
+      'guild', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _channelMeta =
+      const VerificationMeta('channel');
   @override
-  late final GeneratedTextColumn channel = _constructChannel();
-  GeneratedTextColumn _constructChannel() {
-    return GeneratedTextColumn(
-      'channel',
-      $tableName,
-      false,
-    );
-  }
-
-  final VerificationMeta _urlMeta = const VerificationMeta('url');
+  late final GeneratedColumn<String> channel = GeneratedColumn<String>(
+      'channel', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _urlMeta = const VerificationMeta('url');
   @override
-  late final GeneratedTextColumn url = _constructUrl();
-  GeneratedTextColumn _constructUrl() {
-    return GeneratedTextColumn(
-      'url',
-      $tableName,
-      false,
-    );
-  }
-
-  final VerificationMeta _filenameMeta = const VerificationMeta('filename');
+  late final GeneratedColumn<String> url = GeneratedColumn<String>(
+      'url', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _filenameMeta =
+      const VerificationMeta('filename');
   @override
-  late final GeneratedTextColumn filename = _constructFilename();
-  GeneratedTextColumn _constructFilename() {
-    return GeneratedTextColumn(
-      'filename',
-      $tableName,
-      false,
-    );
-  }
-
+  late final GeneratedColumn<String> filename = GeneratedColumn<String>(
+      'filename', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
   @override
   List<GeneratedColumn> get $columns => [id, guild, channel, url, filename];
   @override
-  $AttachmentsTable get asDslTable => this;
+  String get aliasedName => _alias ?? 'attachments';
   @override
-  String get $tableName => _alias ?? 'attachments';
-  @override
-  final String actualTableName = 'attachments';
+  String get actualTableName => 'attachments';
   @override
   VerificationContext validateIntegrity(Insertable<Attachment> instance,
       {bool isInserting = false}) {
@@ -684,13 +587,24 @@ class $AttachmentsTable extends Attachments
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
   Attachment map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : null;
-    return Attachment.fromData(data, _db, prefix: effectivePrefix);
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Attachment(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      guild: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}guild'])!,
+      channel: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}channel'])!,
+      url: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}url'])!,
+      filename: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}filename'])!,
+    );
   }
 
   @override
   $AttachmentsTable createAlias(String alias) {
-    return $AttachmentsTable(_db, alias);
+    return $AttachmentsTable(attachedDatabase, alias);
   }
 }
 
@@ -698,18 +612,8 @@ class MessageAttachment extends DataClass
     implements Insertable<MessageAttachment> {
   final String messageId;
   final String attachmentId;
-  MessageAttachment({required this.messageId, required this.attachmentId});
-  factory MessageAttachment.fromData(
-      Map<String, dynamic> data, GeneratedDatabase db,
-      {String? prefix}) {
-    final effectivePrefix = prefix ?? '';
-    return MessageAttachment(
-      messageId: const StringType()
-          .mapFromDatabaseResponse(data['${effectivePrefix}message_id'])!,
-      attachmentId: const StringType()
-          .mapFromDatabaseResponse(data['${effectivePrefix}attachment_id'])!,
-    );
-  }
+  const MessageAttachment(
+      {required this.messageId, required this.attachmentId});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -727,7 +631,7 @@ class MessageAttachment extends DataClass
 
   factory MessageAttachment.fromJson(Map<String, dynamic> json,
       {ValueSerializer? serializer}) {
-    serializer ??= moorRuntimeOptions.defaultSerializer;
+    serializer ??= driftRuntimeOptions.defaultSerializer;
     return MessageAttachment(
       messageId: serializer.fromJson<String>(json['messageId']),
       attachmentId: serializer.fromJson<String>(json['attachmentId']),
@@ -735,7 +639,7 @@ class MessageAttachment extends DataClass
   }
   @override
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= moorRuntimeOptions.defaultSerializer;
+    serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'messageId': serializer.toJson<String>(messageId),
       'attachmentId': serializer.toJson<String>(attachmentId),
@@ -757,7 +661,7 @@ class MessageAttachment extends DataClass
   }
 
   @override
-  int get hashCode => $mrjf($mrjc(messageId.hashCode, attachmentId.hashCode));
+  int get hashCode => Object.hash(messageId, attachmentId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -820,34 +724,32 @@ class MessageAttachmentsCompanion extends UpdateCompanion<MessageAttachment> {
 
 class $MessageAttachmentsTable extends MessageAttachments
     with TableInfo<$MessageAttachmentsTable, MessageAttachment> {
-  final GeneratedDatabase _db;
-  final String? _alias;
-  $MessageAttachmentsTable(this._db, [this._alias]);
-  final VerificationMeta _messageIdMeta = const VerificationMeta('messageId');
   @override
-  late final GeneratedTextColumn messageId = _constructMessageId();
-  GeneratedTextColumn _constructMessageId() {
-    return GeneratedTextColumn('message_id', $tableName, false,
-        $customConstraints: 'REFERENCES Messages(id)');
-  }
-
-  final VerificationMeta _attachmentIdMeta =
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $MessageAttachmentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _messageIdMeta =
+      const VerificationMeta('messageId');
+  @override
+  late final GeneratedColumn<String> messageId = GeneratedColumn<String>(
+      'message_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      $customConstraints: 'REFERENCES Messages(id)');
+  static const VerificationMeta _attachmentIdMeta =
       const VerificationMeta('attachmentId');
   @override
-  late final GeneratedTextColumn attachmentId = _constructAttachmentId();
-  GeneratedTextColumn _constructAttachmentId() {
-    return GeneratedTextColumn('attachment_id', $tableName, false,
-        $customConstraints: 'REFERENCES Attachments(id)');
-  }
-
+  late final GeneratedColumn<String> attachmentId = GeneratedColumn<String>(
+      'attachment_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      $customConstraints: 'REFERENCES Attachments(id)');
   @override
   List<GeneratedColumn> get $columns => [messageId, attachmentId];
   @override
-  $MessageAttachmentsTable get asDslTable => this;
+  String get aliasedName => _alias ?? 'message_attachments';
   @override
-  String get $tableName => _alias ?? 'message_attachments';
-  @override
-  final String actualTableName = 'message_attachments';
+  String get actualTableName => 'message_attachments';
   @override
   VerificationContext validateIntegrity(Insertable<MessageAttachment> instance,
       {bool isInserting = false}) {
@@ -874,24 +776,30 @@ class $MessageAttachmentsTable extends MessageAttachments
   Set<GeneratedColumn> get $primaryKey => {messageId, attachmentId};
   @override
   MessageAttachment map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : null;
-    return MessageAttachment.fromData(data, _db, prefix: effectivePrefix);
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return MessageAttachment(
+      messageId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}message_id'])!,
+      attachmentId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}attachment_id'])!,
+    );
   }
 
   @override
   $MessageAttachmentsTable createAlias(String alias) {
-    return $MessageAttachmentsTable(_db, alias);
+    return $MessageAttachmentsTable(attachedDatabase, alias);
   }
 }
 
 abstract class _$RawData extends GeneratedDatabase {
-  _$RawData(QueryExecutor e) : super(SqlTypeSystem.defaultInstance, e);
+  _$RawData(QueryExecutor e) : super(e);
   late final $MessagesTable messages = $MessagesTable(this);
   late final $AttachmentsTable attachments = $AttachmentsTable(this);
   late final $MessageAttachmentsTable messageAttachments =
       $MessageAttachmentsTable(this);
   @override
-  Iterable<TableInfo> get allTables => allSchemaEntities.whereType<TableInfo>();
+  Iterable<TableInfo<Table, Object?>> get allTables =>
+      allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities =>
       [messages, attachments, messageAttachments];

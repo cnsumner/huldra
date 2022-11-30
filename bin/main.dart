@@ -6,7 +6,7 @@ import 'package:huldra/schema/knowledge_base.dart';
 import 'package:huldra/schema/raw_data.dart';
 import 'package:huldra/yaml_config.dart';
 import 'package:injector/injector.dart';
-import 'package:moor/ffi.dart';
+import 'package:drift/native.dart';
 import 'package:sqlite3/open.dart';
 
 // 07/01/2018
@@ -33,7 +33,7 @@ void main() async {
     }
     var rawDataFile = File('$basePath/rawData.sqlite');
 
-    return RawData(VmDatabase(rawDataFile));
+    return RawData(NativeDatabase(rawDataFile));
   });
 
   injector.registerSingleton<KnowledgeBase>(() {
@@ -44,7 +44,7 @@ void main() async {
     }
     var kbFile = File('$basePath/kb.sqlite');
 
-    return KnowledgeBase(VmDatabase(kbFile));
+    return KnowledgeBase(NativeDatabase(kbFile));
   });
 
   // initialize bot
