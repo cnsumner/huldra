@@ -1,4 +1,4 @@
-name: Dart CI/CD
+name: Build & Release
 
 on:
   push:
@@ -10,13 +10,13 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image:  google/dart:latest
+      image:  dart:latest
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Install dependencies
-      run: pub get
+      run: dart pub get
     - name: Build
       run: dart compile exe ./bin/main.dart -o ./huldra
     - name: Get version

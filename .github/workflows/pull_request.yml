@@ -1,0 +1,22 @@
+name: Pre-merge Checks
+
+on:  
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    container:
+      image:  dart:latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Install dependencies
+      run: dart pub get
+    - name: Build
+      run: dart compile exe ./bin/main.dart -o ./huldra
