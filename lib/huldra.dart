@@ -254,7 +254,7 @@ class Huldra {
             'Fetched ${countAdded + messages.length} messages up to ${messageSubset.last.createdAt}...');
         await Future.delayed(Duration(milliseconds: 300));
 
-        if (messages.length >= 10000) {
+        if (messages.length >= 5000) {
           print('Buffer full, writing 10k messages to db.');
 
           var results = await Future.wait(messages.map<Future<bool>>(
