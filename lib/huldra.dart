@@ -73,13 +73,18 @@ class Huldra {
                   ..removeWhere((word) => word == '')))
                 .trim();
 
+            var channel = await e.message.channel.getOrDownload();
+
             if (reply.compareTo(e.message.content) != 0) {
-              await (await e.message.channel.getOrDownload())
-                  .sendMessage(MessageBuilder.content(reply));
+              await channel
+                  .sendMessage(MessageBuilder.content(reply))
+                  .catchError((error) {
+                print(
+                    '[${DateTime.now().toUtc().toIso8601String()}]: Encountered error [$error] while sending response to message [${e.message.id.toString()} in channel [${channel.id.toString()}]');
+              });
             } else {
               reply = await Markov.generate([]);
-              await (await e.message.channel.getOrDownload())
-                  .sendMessage(MessageBuilder.content(reply));
+              await channel.sendMessage(MessageBuilder.content(reply));
             }
           }
         });
