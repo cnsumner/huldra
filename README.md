@@ -18,7 +18,7 @@ It will occasionally respond to messages with often nonsensical, but sometimes e
 Why
 ----
 
-Why not?
+Why not??
 
 Usage
 -----
@@ -49,3 +49,4 @@ Can you add X feature?
 Maybe. If I have time and think it's worthwhile. You could also add it yourself and submit a pull-request.
 
 _TODO: add contribution info_
+ 
