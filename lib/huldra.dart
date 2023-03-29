@@ -76,12 +76,12 @@ class Huldra {
             var channel = await e.message.channel.getOrDownload();
 
             if (reply.compareTo(e.message.content) != 0) {
-              await channel
-                  .sendMessage(MessageBuilder.content(reply))
-                  .catchError((error) {
+              try {
+                await channel.sendMessage(MessageBuilder.content(reply));
+              } catch (error) {
                 print(
-                    '[${DateTime.now().toUtc().toIso8601String()}]: Encountered error [$error] while sending response to message [${e.message.id.toString()} in channel [${channel.id.toString()}]');
-              });
+                    '[${DateTime.now().toUtc().toIso8601String()}]: Encountered error [$error] while sending response to message [${e.message.id.toString()}] in channel [${channel.id.toString()}]');
+              }
             } else {
               reply = await Markov.generate([]);
               await channel.sendMessage(MessageBuilder.content(reply));
