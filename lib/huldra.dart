@@ -60,6 +60,7 @@ class Huldra {
           print('sent $reply');
         }).catchError((error) {
           print(error);
+          return false;
         });
       }
       // default case. respond normally
@@ -84,7 +85,12 @@ class Huldra {
               }
             } else {
               reply = await Markov.generate([]);
-              await channel.sendMessage(MessageBuilder.content(reply));
+              try {
+                await channel.sendMessage(MessageBuilder.content(reply));
+              } catch (error) {
+                print(
+                    '[${DateTime.now().toUtc().toIso8601String()}]: Encountered error [$error] while sending response to message [${e.message.id.toString()}] in channel [${channel.id.toString()}]');
+              }
             }
           }
         });
