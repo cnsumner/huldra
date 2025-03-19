@@ -8,6 +8,7 @@ import 'package:huldra/yaml_config.dart';
 import 'package:injector/injector.dart';
 import 'package:drift/native.dart';
 import 'package:sqlite3/open.dart';
+import 'package:nyxx/nyxx.dart';
 
 // 07/01/2018
 
@@ -16,9 +17,10 @@ void main() async {
   var injector = Injector.appInstance;
 
   // get base path of app binary or main.dart
-  var basePath = Platform.script.toFilePath().endsWith('.dart')
-      ? '${File.fromUri(Platform.script).parent.parent.path}/build'
-      : '${File.fromUri(Platform.script).parent.path}';
+  var basePath =
+      Platform.script.toFilePath().endsWith('.dart')
+          ? '${File.fromUri(Platform.script).parent.parent.path}/build'
+          : '${File.fromUri(Platform.script).parent.path}';
 
   // register dependencies
   await YamlConfig.fromFile(File('$basePath/config.yaml')).then((result) {
@@ -47,6 +49,9 @@ void main() async {
     return KnowledgeBase(NativeDatabase(kbFile));
   });
 
+  var _config = Injector.appInstance.get<YamlConfig>();
+  var nyxxClient = await Nyxx.connectGateway(_config.getString('discordToken'), GatewayIntents.all);
+
   // initialize bot
-  Huldra();
+  Huldra(nyxxClient, _config.getInt('probability'), _config.getInt('ownerId'));
 }

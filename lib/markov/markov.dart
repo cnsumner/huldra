@@ -17,18 +17,14 @@ class Markov {
   /// - [msgOccurances] -> number of messages this term appears in
   ///
   /// See details of tf-idf [here](https://en.wikipedia.org/wiki/Tf%E2%80%93idf)
-  static double _tfidf(
-      MetaData metadata, Word term, int msgLength, int termCount) {
-    return (termCount / msgLength) *
-        log(metadata.msgCount / term.msgOccurances) /
-        ln10;
+  static double _tfidf(MetaData metadata, Word term, int msgLength, int termCount) {
+    return (termCount / msgLength) * log(metadata.msgCount / term.msgOccurances) / ln10;
   }
 
   /// Train off of a sample array
   ///
   /// Trains the markov chain off of [tokens], converting them into [Word] objects
-  static Future<MetaData> train(
-      MetaData metadata, Map<String, Word> wordMap, List<String> tokens) async {
+  static Future<MetaData> train(MetaData metadata, Map<String, Word> wordMap, List<String> tokens) async {
     var kb = Injector.appInstance.get<KnowledgeBase>();
 
     var _msgCount = metadata.msgCount + 1;
@@ -36,11 +32,9 @@ class Markov {
 
     var dupeCheck = <String, bool>{};
 
-    var keys =
-        tokens.map((token) => sha1.convert(utf8.encode(token)).toString());
+    var keys = tokens.map((token) => sha1.convert(utf8.encode(token)).toString());
 
-    var words = (await kb
-        .getWords(keys.where((key) => !wordMap.containsKey(key)).toList()));
+    var words = (await kb.getWords(keys.where((key) => !wordMap.containsKey(key)).toList()));
 
     words.forEach((word) {
       wordMap.putIfAbsent(word.wordHash, () => word);
@@ -51,7 +45,8 @@ class Markov {
 
       Word word;
 
-      word = wordMap[key] ??
+      word =
+          wordMap[key] ??
           () {
             _wordCount++;
             return WordExtensions.constructWord(key, tokens[i]);
@@ -61,30 +56,30 @@ class Markov {
       var _msgOccurances = word.msgOccurances;
 
       word.distFromHead.update(i, (value) => value + 1, ifAbsent: () => 1);
-      word.distFromTail.update((tokens.length - 1) - i, (value) => value + 1,
-          ifAbsent: () => 1);
+      word.distFromTail.update((tokens.length - 1) - i, (value) => value + 1, ifAbsent: () => 1);
 
       _totalOccurances++;
 
-      dupeCheck.update(key, (value) => true, ifAbsent: () {
-        _msgOccurances++;
-        return true;
-      });
+      dupeCheck.update(
+        key,
+        (value) => true,
+        ifAbsent: () {
+          _msgOccurances++;
+          return true;
+        },
+      );
 
       if (i != 0) {
         var prefixKey = sha1.convert(utf8.encode(tokens[i - 1])).toString();
-        word.prefixes
-            .update(prefixKey, (value) => value + 1, ifAbsent: () => 1);
+        word.prefixes.update(prefixKey, (value) => value + 1, ifAbsent: () => 1);
       }
 
       if (i != tokens.length - 1) {
         var suffixKey = sha1.convert(utf8.encode(tokens[i + 1])).toString();
-        word.suffixes
-            .update(suffixKey, (value) => value + 1, ifAbsent: () => 1);
+        word.suffixes.update(suffixKey, (value) => value + 1, ifAbsent: () => 1);
       }
 
-      wordMap[key] = word.copyWith(
-          totalOccurances: _totalOccurances, msgOccurances: _msgOccurances);
+      wordMap[key] = word.copyWith(totalOccurances: _totalOccurances, msgOccurances: _msgOccurances);
 
       // await kb.updateWord(word.copyWith(
       //     totalOccurances: _totalOccurances, msgOccurances: _msgOccurances));
@@ -112,11 +107,10 @@ class Markov {
     if (tokens.isNotEmpty) {
       var words = <double, Word>{};
 
-      (await Future.wait<Word>(tokens.map<Future<Word>>((token) =>
-              kb.getWord(sha1.convert(utf8.encode(token)).toString()))))
-          .forEach((word) {
-        words[_tfidf(metadata, word, tokens.length,
-            tokens.where((t) => t == word.word).length)] = word;
+      (await Future.wait<Word>(
+        tokens.map<Future<Word>>((token) => kb.getWord(sha1.convert(utf8.encode(token)).toString())),
+      )).forEach((word) {
+        words[_tfidf(metadata, word, tokens.length, tokens.where((t) => t == word.word).length)] = word;
       });
 
       // tokens.forEach((token) async {
@@ -144,21 +138,19 @@ class Markov {
     var prefixCount = anchor.randomDistFromHead(rand.nextDouble());
 
     if (prefixCount > 0) {
-      prefixWords.add((await anchor.randomPrefix(rand
-          .nextDouble()))!); // using null-check here since, if [prefixCount] > 0 then [randomPrefix] can't return null
+      prefixWords.add(
+        (await anchor.randomPrefix(rand.nextDouble()))!,
+      ); // using null-check here since, if [prefixCount] > 0 then [randomPrefix] can't return null
 
       while (prefixWords.first.prefixes.isNotEmpty) {
         var prefix = await prefixWords.first.randomPrefix(rand.nextDouble());
-        prefixWords.insert(0,
-            prefix!); // null-check used here here because of the while condition above
+        prefixWords.insert(0, prefix!); // null-check used here here because of the while condition above
 
         if (prefixWords.length >= prefixCount) {
           if (prefix.distFromHead.containsKey(0)) {
             break;
           } else if (prefixWords.length / prefixCount > 1.5) {
-            var lastHeadIndex = prefixWords
-                .takeWhile((word) => !word.distFromHead.containsKey(0))
-                .length;
+            var lastHeadIndex = prefixWords.takeWhile((word) => !word.distFromHead.containsKey(0)).length;
 
             if (lastHeadIndex < prefixWords.length) {
               prefixWords.removeRange(0, lastHeadIndex);
@@ -174,8 +166,7 @@ class Markov {
     var suffixCount = anchor.randomDistFromTail(rand.nextDouble());
 
     if (suffixCount > 0) {
-      suffixWords.add((await anchor
-          .randomSuffix(rand.nextDouble()))!); // null-check same as above
+      suffixWords.add((await anchor.randomSuffix(rand.nextDouble()))!); // null-check same as above
 
       while (suffixWords.last.suffixes.isNotEmpty) {
         var suffix = await suffixWords.last.randomSuffix(rand.nextDouble());
@@ -185,9 +176,7 @@ class Markov {
           if (suffix.distFromTail.containsKey(0)) {
             break;
           } else if (suffixWords.length / suffixCount > 1.5) {
-            var lastTailIndex = suffixWords.reversed
-                .takeWhile((word) => !word.distFromTail.containsKey(0))
-                .length;
+            var lastTailIndex = suffixWords.reversed.takeWhile((word) => !word.distFromTail.containsKey(0)).length;
 
             if (lastTailIndex < suffixWords.length) {
               suffixWords.removeRange(lastTailIndex + 1, suffixWords.length);
@@ -199,10 +188,8 @@ class Markov {
       }
     }
 
-    print(
-        'Attempting to generate $prefixCount prefixes and $suffixCount suffixes...');
-    print(
-        'Generated ${prefixWords.length} prefixes and ${suffixWords.length} suffixes.');
+    print('Attempting to generate $prefixCount prefixes and $suffixCount suffixes...');
+    print('Generated ${prefixWords.length} prefixes and ${suffixWords.length} suffixes.');
 
     return '${prefixWords.map((w) => w.word).toList().join(' ')} ${anchor.word} ${suffixWords.map((w) => w.word).toList().join(' ')}';
   }
