@@ -255,10 +255,9 @@ class Huldra {
 
     var guild = await bot.guilds.get(guildId);
 
-    var botMember = await guild.fetchCurrentMember();
+    var botMember = await guild.members.get(bot.user.id);
 
-    var channels =
-        (await guild.fetchChannels()).where((channel) => _channelTypeValid(channel)) as Iterable<GuildTextChannel>;
+    var channels = (await guild.fetchChannels()).where((channel) => _channelTypeValid(channel));
 
     var totalCountAdded = 0;
     var totalCountFetched = 0;
@@ -276,7 +275,7 @@ class Huldra {
 
       var messageBuffer = <Message>[];
 
-      var messagesStream = channel.messages.stream(after: startId);
+      var messagesStream = (channel as TextChannel).messages.stream(after: startId);
 
       messagesStream.listen(
         (Message message) async {

@@ -1,6 +1,6 @@
 name: huldra
 description: A deranged discord bot.
-version: 0.10.0
+version: 0.10.1
 
 environment:
   sdk: "^3.7.0"
