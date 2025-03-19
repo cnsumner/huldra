@@ -1,96 +1,82 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:huldra/markov/markov.dart';
 import 'package:huldra/schema/knowledge_base.dart';
-import 'package:huldra/yaml_config.dart';
 import 'package:injector/injector.dart';
 import 'package:drift/native.dart';
 import 'package:nyxx/nyxx.dart';
 import 'package:huldra/schema/raw_data.dart' as tables;
 import 'package:huldra/extensions/word_extensions.dart';
+import 'package:nyxx_extensions/nyxx_extensions.dart';
 
 class Huldra {
-  late INyxxWebsocket bot;
-  late int probability;
-  late int ownerId;
+  NyxxGateway bot;
+  int probability;
+  int ownerId;
 
-  Huldra() {
-    var _config = Injector.appInstance.get<YamlConfig>();
-
-    bot = NyxxFactory.createNyxxWebsocket(
-        _config.getString('discordToken'), GatewayIntents.all)
-      ..connect();
-    probability = _config.getInt('probability');
-    ownerId = _config.getInt('ownerId');
-
+  Huldra(this.bot, this.probability, this.ownerId) {
     var kb = Injector.appInstance.get<KnowledgeBase>();
 
-    bot.eventsWs.onMessageReceived.listen((IMessageReceivedEvent e) async {
+    bot.onMessageCreate.listen((e) async {
       // ignore bot messages and empty messages
-      if (e.message.author.bot ||
-          (e.message.content.isEmpty && e.message.attachments.isEmpty)) {
-        print('Ignoring bot or empty message: ${e.message.id.id}');
+      var author = await e.member?.get();
+      if (author?.user?.isBot == true || (e.message.content.isEmpty && e.message.attachments.isEmpty)) {
+        print('Ignoring bot or empty message: ${e.message.id.value}');
       }
       // process commands
-      else if (e.message.content.startsWith('_') &&
-          !e.message.content.startsWith('__')) {
+      else if (e.message.content.startsWith('_') && !e.message.content.startsWith('__')) {
         await _processCommands(e);
       }
       // process bot mentions
-      else if (e.message.mentions
-          .where((mention) => mention.id.id == bot.self.id.id)
-          .isNotEmpty) {
-        await _addMessage(e.message, e.message.guild?.id)
+      else if (e.message.mentions.where((mention) => mention.id.compareTo(bot.user.id) == 0).isNotEmpty) {
+        await e.message.channel.triggerTyping();
+
+        await _addMessage(e.message, e.guild?.id)
             .whenComplete(() async {
-          var input = e.message.content.split(' ')
-            ..removeAt(0)
-            ..removeWhere((word) => word == '');
+              var input =
+                  e.message.content.split(' ')
+                    ..removeAt(0)
+                    ..removeWhere((word) => word == '');
 
-          var reply = (await Markov.generate(input))
-              .replaceAll('<@!${bot.self.id.id}>', '')
-              .replaceAll('<@${bot.self.id.id}>', '')
-              .trim();
+              var reply = await generateNonDuplicate(input, input.join(' ').trim());
 
-          if (reply.compareTo(input.join(' ').trim()) == 0) {
-            reply = await Markov.generate([]);
-          }
+              await Future.delayed(Duration(milliseconds: 100 * reply.split(' ').length.clamp(5, 100)));
 
-          await (await e.message.channel.getOrDownload())
-              .sendMessage(MessageBuilder.content(reply));
-          print('sent $reply');
-        }).catchError((error) {
-          print(error);
-          return false;
-        });
+              await e.message.channel.sendMessage(MessageBuilder(content: reply));
+              print('sent $reply');
+            })
+            .catchError((error) {
+              print(error);
+              return false;
+            });
       }
       // default case. respond normally
       else {
-        await _addMessage(e.message, e.message.guild?.id)
-            .whenComplete(() async {
-          var rand = Random(DateTime.now().millisecondsSinceEpoch);
+        var rand = Random(DateTime.now().millisecondsSinceEpoch);
+        var willReply = (rand.nextInt(probability) + 1) == probability;
 
-          if ((rand.nextInt(probability) + 1) == probability) {
-            var reply = (await Markov.generate(e.message.content.split(' ')
-                  ..removeWhere((word) => word == '')))
-                .trim();
+        if (willReply) {
+          await e.message.channel.triggerTyping();
+        }
 
-            var channel = await e.message.channel.getOrDownload();
+        await _addMessage(e.message, e.guild?.id).whenComplete(() async {
+          if (willReply) {
+            var reply =
+                (await generateNonDuplicate(
+                  e.message.content.split(' ')..removeWhere((word) => word == ''),
+                  e.message.content,
+                )).trim();
 
-            if (reply.compareTo(e.message.content) != 0) {
-              try {
-                await channel.sendMessage(MessageBuilder.content(reply));
-              } catch (error) {
-                print(
-                    '[${DateTime.now().toUtc().toIso8601String()}]: Encountered error [$error] while sending response to message [${e.message.id.toString()}] in channel [${channel.id.toString()}]');
-              }
-            } else {
-              reply = await Markov.generate([]);
-              try {
-                await channel.sendMessage(MessageBuilder.content(reply));
-              } catch (error) {
-                print(
-                    '[${DateTime.now().toUtc().toIso8601String()}]: Encountered error [$error] while sending response to message [${e.message.id.toString()}] in channel [${channel.id.toString()}]');
-              }
+            await Future.delayed(Duration(milliseconds: 100 * reply.split(' ').length.clamp(5, 100)));
+
+            try {
+              await e.message.channel.sendMessage(MessageBuilder(content: reply));
+              print('sent $reply');
+            } catch (error) {
+              print(
+                '[${DateTime.now().toUtc().toIso8601String()}]: Encountered error [$error] while sending response to message [${e.message.id.toString()}] in channel [${e.message.channelId.toString()}]',
+              );
             }
           }
         });
@@ -101,45 +87,38 @@ class Huldra {
       print('Huldra is awake...');
     });
 
-    kb.getMetadata().then(
-        (value) => print('Metadata loaded with ${value.wordCount} words.'));
-    kb
-        .countWords()
-        .getSingle()
-        .then((value) => print('Knowledgebase loaded with $value words.'));
+    kb.getMetadata().then((value) => print('Metadata loaded with ${value.wordCount} words.'));
+    kb.countWords().getSingle().then((value) => print('Knowledgebase loaded with $value words.'));
   }
 
-  Future<bool> _addMessage(IMessage m, Snowflake? guildId,
-      {bool printDebugLogs = true}) async {
-    if (m.author.bot) {
-      _printLogIf('Skipping message ${m.id.id}: bot message ', printDebugLogs);
-      return false;
-    }
-
+  Future<bool> _addMessage(Message m, Snowflake? guildId, {bool printDebugLogs = true}) async {
     if (guildId == null) {
-      print(
-          "Skipping message ${m.id.id}: guild is null. this probably shouldn't happen");
+      print("Skipping message ${m.id.toString()}: guild is null. this probably shouldn't happen");
       return false;
     }
 
     var message = tables.Message(
-        id: m.id.toString(),
-        guild: guildId.id.toString(),
-        channel: m.channel.id.toString(),
-        author: m.author.id.toString(),
-        timestamp: m.createdAt,
-        content: m.content);
+      id: m.id.toString(),
+      guild: guildId.toString(),
+      channel: m.channel.id.toString(),
+      author: m.author.id.toString(),
+      timestamp: m.timestamp,
+      content: m.content,
+    );
 
     var attachments = <tables.Attachment>[];
 
     if (m.attachments.isNotEmpty) {
       m.attachments.forEach((attachment) {
-        attachments.add(tables.Attachment(
+        attachments.add(
+          tables.Attachment(
             id: attachment.id.toString(),
-            guild: guildId.id.toString(),
+            guild: guildId.toString(),
             channel: m.channel.id.toString(),
-            url: attachment.url,
-            filename: attachment.filename));
+            url: attachment.url.toString(),
+            filename: attachment.fileName,
+          ),
+        );
       });
     }
 
@@ -147,8 +126,7 @@ class Huldra {
 
     if (attachments.isNotEmpty) {
       attachments.forEach((attachment) {
-        messageAttachments.add(tables.MessageAttachment(
-            attachmentId: attachment.id, messageId: message.id));
+        messageAttachments.add(tables.MessageAttachment(attachmentId: attachment.id, messageId: message.id));
       });
     }
 
@@ -158,21 +136,19 @@ class Huldra {
         .get<tables.RawData>()
         .insertMessage(message, attachments, messageAttachments)
         .then(
-      (result) {
-        _printLogIf('Added message ${message.id} to db...', printDebugLogs);
-      },
-      onError: (e) {
-        if (e.runtimeType == SqliteException &&
-            (e as SqliteException)
-                .message
-                .contains('UNIQUE constraint failed: messages.id')) {
-          _printLogIf('Skipping message already in db', printDebugLogs);
-        } else {
-          print('Failed to add message to db: ${e.toString()}');
-        }
-        error = true;
-      },
-    );
+          (result) {
+            _printLogIf('Added message ${message.id} to db...', printDebugLogs);
+          },
+          onError: (e) {
+            if (e.runtimeType == SqliteException &&
+                (e as SqliteException).message.contains('UNIQUE constraint failed: messages.id')) {
+              _printLogIf('Skipping message already in db', printDebugLogs);
+            } else {
+              print('Failed to add message to db: ${e.toString()}');
+            }
+            error = true;
+          },
+        );
 
     if (error) {
       return false;
@@ -181,37 +157,47 @@ class Huldra {
       var metadata = await kb.getMetadata();
       var wordMap = <String, Word>{};
       metadata = await Markov.train(
-          metadata,
-          wordMap,
-          message.content.replaceFirst('<@!${bot.self.id.id}>', '').split(' ')
-            ..removeWhere((word) => word == ''));
+        metadata,
+        wordMap,
+        message.content.replaceFirst(RegExp('<@!?${bot.user.id.toString()}>'), '').split(' ')
+          ..removeWhere((word) => word == ''),
+      );
 
       await kb.updateMetadata(metadata);
-      await kb.updateWords(wordMap.entries
-          .map<Word>((entry) => entry.value)
-          .toList(growable: false));
+      await kb.updateWords(wordMap.entries.map<Word>((entry) => entry.value).toList(growable: false));
 
       return true;
     }
   }
 
-  Future<int> _addMessages(List<IMessage> messages, Snowflake guildId) async {
+  Future<int> _addMessages(List<Message> messages, Snowflake guildId) async {
     var initialCount = messages.length;
 
-    messages.removeWhere((m) => m.author.bot);
+    // create key value map of message id to author isBot status
+    var messageFilter = <int, bool>{};
+    for (var message in messages) {
+      var authorUser = await bot.users.get(message.author.id);
+      messageFilter[message.id.value] = authorUser.isBot;
+    }
 
-    _printLogIf('Skipping ${initialCount - messages.length} bot messages...',
-        initialCount - messages.length > 0);
+    // remove bot messages
+    messages.retainWhere((m) => messageFilter[m.id.value] == false);
 
-    var dbMessages = messages
-        .map((m) => tables.Message(
-            id: m.id.toString(),
-            guild: guildId.id.toString(),
-            channel: m.channel.id.toString(),
-            author: m.author.id.toString(),
-            timestamp: m.createdAt,
-            content: m.content))
-        .toList();
+    _printLogIf('Skipping ${initialCount - messages.length} bot messages...', initialCount - messages.length > 0);
+
+    var dbMessages =
+        messages
+            .map(
+              (m) => tables.Message(
+                id: m.id.toString(),
+                guild: guildId.toString(),
+                channel: m.channel.id.toString(),
+                author: m.author.id.toString(),
+                timestamp: m.timestamp,
+                content: m.content,
+              ),
+            )
+            .toList();
 
     var dbAttachments = <tables.Attachment>[];
     var dbMessageAttachments = <tables.MessageAttachment>[];
@@ -219,65 +205,68 @@ class Huldra {
     messages.forEach((m) {
       if (m.attachments.isNotEmpty) {
         m.attachments.forEach((attachment) {
-          dbAttachments.add(tables.Attachment(
+          dbAttachments.add(
+            tables.Attachment(
               id: attachment.id.toString(),
-              guild: guildId.id.toString(),
+              guild: guildId.toString(),
               channel: m.channel.id.toString(),
-              url: attachment.url,
-              filename: attachment.filename));
-          dbMessageAttachments.add(tables.MessageAttachment(
-              attachmentId: attachment.id.toString(),
-              messageId: m.id.toString()));
+              url: attachment.url.toString(),
+              filename: attachment.fileName,
+            ),
+          );
+          dbMessageAttachments.add(
+            tables.MessageAttachment(attachmentId: attachment.id.toString(), messageId: m.id.toString()),
+          );
         });
       }
     });
 
-    return await Injector.appInstance
-        .get<tables.RawData>()
-        .insertMessages(dbMessages, dbAttachments, dbMessageAttachments);
+    return await Injector.appInstance.get<tables.RawData>().insertMessages(
+      dbMessages,
+      dbAttachments,
+      dbMessageAttachments,
+    );
   }
 
-  Future<void> _processCommands(IMessageReceivedEvent e) async {
-    if (e.message.content.startsWith('_fetch') &&
-        e.message.author.id.id == ownerId) {
+  Future<void> _processCommands(MessageCreateEvent e) async {
+    if (e.message.content.startsWith('_fetch') && e.message.author.id.value == ownerId) {
       var arguments = e.message.content.split(' ')..removeAt(0);
-      if (arguments.isNotEmpty && e.message.guild != null) {
-        _fetchMessages(e.message.guild!.id, Snowflake(arguments[0]));
+      if (arguments.isNotEmpty && e.guild != null) {
+        _fetchMessages(e.guild!.id, Snowflake.parse(arguments[0]));
       } else {
-        // reply with error
+        await e.message.channel.sendMessage(MessageBuilder(content: 'Invalid arguments or no guild'));
       }
-    } else if (e.message.content.startsWith('_trainall') &&
-        e.message.author.id.id == ownerId) {
+    } else if (e.message.content.startsWith('_trainall') && e.message.author.id.value == ownerId) {
       _trainAll();
     } else if (e.message.content.startsWith('_query')) {
       var arguments = e.message.content.split(' ')..removeAt(0);
       if (arguments.isNotEmpty && arguments.length == 1) {
         await _query(arguments[0]).then((value) async {
-          await (await e.message.channel.getOrDownload())
-              .sendMessage(MessageBuilder.content(value));
+          await e.message.channel.sendMessage(MessageBuilder(content: value));
         });
       } else {
-        await (await e.message.channel.getOrDownload()).sendMessage(
-            MessageBuilder.content('Word not specified. Usage: _query [word]'));
+        await e.message.channel.sendMessage(MessageBuilder(content: 'Word not specified. Usage: _query [word]'));
       }
     }
   }
 
   void _fetchMessages(Snowflake guildId, Snowflake startId) async {
-    print('Fetching messages after ${startId.id}');
+    print('Fetching messages after ${startId.toString()}');
 
-    var guild = await bot.fetchGuild(guildId);
+    var guild = await bot.guilds.get(guildId);
 
-    var botMember = await guild.fetchMember(bot.appId);
+    var botMember = await guild.fetchCurrentMember();
 
     var channels =
-        guild.channels.where((channel) => _channelTypeValid(channel));
+        (await guild.fetchChannels()).where((channel) => _channelTypeValid(channel)) as Iterable<GuildTextChannel>;
 
     var totalCountAdded = 0;
     var totalCountFetched = 0;
 
     for (var channel in channels) {
-      if (!(await channel.effectivePermissions(botMember)).readMessageHistory) {
+      var effectivePermissions = await channel.computePermissionsFor(botMember);
+
+      if (!effectivePermissions.canViewChannel || !effectivePermissions.canReadMessageHistory) {
         print('Skipping channel [${channel.name}]: no read permission');
         continue;
       }
@@ -285,58 +274,59 @@ class Huldra {
       var channelCountAdded = 0;
       var channelCountFetched = 0;
 
-      var messages = <IMessage>[];
-      var lastId = startId;
+      var messageBuffer = <Message>[];
 
-      while (true) {
-        var messageSubset = await channel.client.httpEndpoints
-            .downloadMessages(channel.id, limit: 100, after: lastId)
-            .toList();
-        messageSubset.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-        messages.addAll(messageSubset);
+      var messagesStream = channel.messages.stream(after: startId);
 
-        if (messageSubset.isEmpty) {
-          break;
-        }
+      messagesStream.listen(
+        (Message message) async {
+          messageBuffer.add(message);
 
-        channelCountFetched += messageSubset.length;
-        totalCountFetched += messageSubset.length;
+          if (messageBuffer.length >= 1000) {
+            print('Buffer full, writing 1k messages to db...');
 
-        lastId = messageSubset.last.id;
+            channelCountFetched += messageBuffer.length;
+            totalCountFetched += messageBuffer.length;
 
-        _printLogIf(
-            'Fetched $totalCountFetched messages so far, up to ${messageSubset.last.createdAt}...',
-            totalCountFetched > 0);
+            _printLogIf(
+              'Fetched $totalCountFetched messages so far, up to ${messageBuffer.last.createdAt}...',
+              totalCountFetched > 0,
+            );
 
-        await Future.delayed(Duration(milliseconds: 300));
+            var results = await _addMessages(messageBuffer, guild.id);
 
-        if (messages.length >= 1000) {
-          print('Buffer full, writing 1k messages to db...');
+            print('Wrote $results messages to database');
 
-          var results = await _addMessages(messages, guild.id);
+            totalCountAdded += results;
+            channelCountAdded += results;
+            messageBuffer.clear();
+          }
+        },
+        onDone: () async {
+          if (messageBuffer.isNotEmpty) {
+            channelCountFetched += messageBuffer.length;
+            totalCountFetched += messageBuffer.length;
 
-          print('Wrote $results messages to database');
+            var results = await _addMessages(messageBuffer, guild.id);
+            _printLogIf('Wrote $results messages to database', results > 0);
 
-          totalCountAdded += results;
-          channelCountAdded += results;
-          messages.clear();
-        }
-      }
+            totalCountAdded += results;
+            channelCountAdded += results;
+          }
 
-      var results = await _addMessages(messages, guild.id);
-      _printLogIf('Wrote $results messages to database', results > 0);
-
-      totalCountAdded += results;
-      channelCountAdded += results;
-
-      print((channelCountFetched > 0
-              ? 'Added $channelCountAdded out of $channelCountFetched messages'
-              : 'No messages to add') +
-          ' from channel ${channel.name}');
+          print(
+            (channelCountFetched > 0
+                    ? 'Added $channelCountAdded out of $channelCountFetched messages'
+                    : 'No messages to add') +
+                ' from channel ${channel.name}',
+          );
+        },
+      );
     }
 
     print(
-        'Added $totalCountAdded out of $totalCountFetched messages from ${channels.length} channels. Run `_trainAll` to sync the knowledgebase');
+      'Added $totalCountAdded out of $totalCountFetched messages from ${channels.length} channels. Run `_trainAll` to sync the knowledgebase',
+    );
   }
 
   void _trainAll() async {
@@ -371,9 +361,7 @@ class Huldra {
 
     var pageSize = 1000;
 
-    var messages = await Injector.appInstance
-        .get<tables.RawData>()
-        .getPagedMessages(pageSize);
+    var messages = await Injector.appInstance.get<tables.RawData>().getPagedMessages(pageSize);
 
     var stopwatch = Stopwatch();
     var lastFreq;
@@ -387,17 +375,13 @@ class Huldra {
       var wordMap = <String, Word>{};
 
       for (var message in messages) {
-        var tokens = message.content
-            .replaceFirst('<@!${bot.self.id.id}>', '')
-            .split(' ')
+        var tokens = message.content.replaceFirst(RegExp('<@!?${bot.user.id.toString()}>'), '').split(' ')
           ..removeWhere((token) => token == '');
 
         metadata = await Markov.train(metadata, wordMap, tokens);
       }
 
-      await kb.updateWords(wordMap.entries
-          .map<Word>((entry) => entry.value)
-          .toList(growable: false));
+      await kb.updateWords(wordMap.entries.map<Word>((entry) => entry.value).toList(growable: false));
 
       await kb.updateMetadata(metadata);
 
@@ -409,9 +393,7 @@ class Huldra {
 
       var msgCount = messages.length;
 
-      messages = await Injector.appInstance
-          .get<tables.RawData>()
-          .getPagedMessages(pageSize, lastId: messages.last.id);
+      messages = await Injector.appInstance.get<tables.RawData>().getPagedMessages(pageSize, lastId: messages.last.id);
 
       stopwatch.stop();
 
@@ -433,8 +415,7 @@ class Huldra {
         print('Frequency: ${freq * 1000} msgs/s');
         print('Performance bias: $performanceBias');
 
-        if ((pageSize < 2000 && direction > 0) ||
-            (pageSize > 100 && direction < 0)) {
+        if ((pageSize < 2000 && direction > 0) || (pageSize > 100 && direction < 0)) {
           pageSize += 100 * direction;
           print('Changing page size to $pageSize');
         }
@@ -443,13 +424,11 @@ class Huldra {
       }
     }
 
-    await kb.getMetadata().then((value) => print(
-        'Trained on ${value.wordCount} words from ${value.msgCount} messages'));
+    await kb.getMetadata().then(
+      (value) => print('Trained on ${value.wordCount} words from ${value.msgCount} messages'),
+    );
 
-    await kb
-        .countWords()
-        .getSingle()
-        .then((value) => print('Kb now contains $value words'));
+    await kb.countWords().getSingle().then((value) => print('Kb now contains $value words'));
 
     // var words =
     //     messages.map((m) => m.content.split(' ')).expand((w) => w).toList();
@@ -483,26 +462,49 @@ class Huldra {
 
     var words = await kb.queryWords(word);
 
-    var results = await Future.wait(words.map<Future<String>>((word) {
-      return word.toFormattedString();
-    }));
+    var results = await Future.wait(
+      words.map<Future<String>>((word) {
+        return word.toFormattedString();
+      }),
+    );
 
     var formattedResults = results.join();
 
     return 'Results: $formattedResults';
   }
 
-  bool _channelTypeValid(IChannel channel) {
+  bool _channelTypeValid(Channel channel) {
     return <ChannelType>[
-      ChannelType.text,
-      ChannelType.guildPublicThread,
-      ChannelType.guildPrivateThread
-    ].contains(channel.channelType);
+      ChannelType.guildText,
+      ChannelType.publicThread,
+      ChannelType.privateThread,
+    ].contains(channel.type);
   }
 
   void _printLogIf(String message, bool shouldLog) {
     if (shouldLog) {
       print(message);
     }
+  }
+
+  Future<String> generateNonDuplicate(List<String> tokens, String original) async {
+    var output = await Markov.generate(tokens);
+
+    // if the output is the same as the input, try again a few times
+    for (var i = 0; i < 2; i++) {
+      if (output.trim().compareTo(original.trim()) == 0) {
+        print('Duplicate message generated, retrying...');
+        output = await Markov.generate(tokens);
+      } else {
+        break;
+      }
+    }
+
+    if (output.trim().compareTo(original.trim()) == 0) {
+      var rand = Random(DateTime.now().millisecondsSinceEpoch);
+      output = rand.nextInt(2) == 0 ? output : (await Markov.generate([]));
+    }
+
+    return output.replaceAll(RegExp('<@!?${bot.user.id.toString()}>'), '').trim();
   }
 }
