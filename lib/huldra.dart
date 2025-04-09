@@ -30,6 +30,15 @@ class Huldra {
       }
       // process bot mentions
       else if (e.message.mentions.where((mention) => mention.id.compareTo(bot.user.id) == 0).isNotEmpty) {
+        var guildChannel = (await e.message.channel.get()) as GuildChannel;
+        var effectivePermissions = await guildChannel.computePermissionsFor(
+          await guildChannel.guild.members.get(bot.user.id),
+        );
+
+        if (effectivePermissions.canSendMessages == false) {
+          print('Cannot send message in channel ${e.message.channelId.toString()} due to permissions');
+          return;
+        }
         await e.message.channel.triggerTyping();
 
         await _addMessage(e.message, e.guild?.id)
@@ -57,6 +66,16 @@ class Huldra {
         var willReply = (rand.nextInt(probability) + 1) == probability;
 
         if (willReply) {
+          var guildChannel = (await e.message.channel.get()) as GuildChannel;
+          var effectivePermissions = await guildChannel.computePermissionsFor(
+            await guildChannel.guild.members.get(bot.user.id),
+          );
+
+          if (effectivePermissions.canSendMessages == false) {
+            print('Cannot send message in channel ${e.message.channelId.toString()} due to permissions');
+            return;
+          }
+
           await e.message.channel.triggerTyping();
         }
 
