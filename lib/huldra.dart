@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:huldra/markov/markov.dart';
@@ -371,6 +372,10 @@ class Huldra {
     // print(
     //     'Trained on ${markov.wordCount} words from ${markov.msgCount} messages');
 
+    // open corpus file for writing
+    var corpusFile = File('corpus.txt');
+    var sink = corpusFile.openWrite(mode: FileMode.writeOnly);
+
     var kb = Injector.appInstance.get<KnowledgeBase>();
 
     await kb.clearKnowledgeBase();
@@ -393,9 +398,11 @@ class Huldra {
       var wordMap = <String, Word>{};
 
       for (var message in messages) {
-        var tokens = message.content.replaceFirst(RegExp('<@!?${bot.user.id.toString()}>'), '').split(' ')
-          ..removeWhere((token) => token == '');
+        var sanitizedMessage = message.content.replaceFirst(RegExp('<@!?${bot.user.id.toString()}>'), '').trim();
+        var tokens = sanitizedMessage.split(' ')..removeWhere((token) => token == '');
 
+        sink.writeln(sanitizedMessage);
+        await sink.flush();
         metadata = await Markov.train(metadata, wordMap, tokens);
       }
 
@@ -442,11 +449,14 @@ class Huldra {
       }
     }
 
+    await sink.close();
+
     await kb.getMetadata().then(
       (value) => print('Trained on ${value.wordCount} words from ${value.msgCount} messages'),
     );
 
     await kb.countWords().getSingle().then((value) => print('Kb now contains $value words'));
+    print('Corpus file written to ${corpusFile.path}, use it to train fasttext');
 
     // var words =
     //     messages.map((m) => m.content.split(' ')).expand((w) => w).toList();

@@ -9,6 +9,7 @@ import 'package:injector/injector.dart';
 import 'package:drift/native.dart';
 import 'package:sqlite3/open.dart';
 import 'package:nyxx/nyxx.dart';
+import 'package:fasttext/fasttext.dart';
 
 // 07/01/2018
 
@@ -50,6 +51,16 @@ void main() async {
   });
 
   var _config = Injector.appInstance.get<YamlConfig>();
+
+  if (_config.getBool('useFastText')) {
+    injector.registerSingleton<FastText>(() {
+      var fastTextFile = File('$basePath/fasttext.bin');
+      var fasttext = FastText();
+      fasttext.loadModel(fastTextFile.path);
+      return fasttext;
+    });
+  }
+
   var nyxxClient = await Nyxx.connectGateway(_config.getString('discordToken'), GatewayIntents.all);
 
   // initialize bot

@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
+import 'package:fasttext/fasttext.dart';
 import 'package:huldra/extensions/word_extensions.dart';
 import 'package:huldra/schema/knowledge_base.dart';
+import 'package:huldra/yaml_config.dart';
 import 'package:injector/injector.dart';
 
 class Markov {
@@ -98,11 +100,14 @@ class Markov {
 
   static Future<String> generate(List<String> tokens) async {
     var kb = Injector.appInstance.get<KnowledgeBase>();
+    var useFastText = Injector.appInstance.get<YamlConfig>().getBool('useFastText');
     var rand = Random(DateTime.now().millisecondsSinceEpoch);
 
     var metadata = await kb.getMetadata();
 
     Word? anchor;
+
+    var sentenceVector = useFastText ? Injector.appInstance.get<FastText>().getSentenceVector(tokens.join(' ')) : null;
 
     if (tokens.isNotEmpty) {
       var words = <double, Word>{};
@@ -110,13 +115,17 @@ class Markov {
       (await Future.wait<Word>(
         tokens.map<Future<Word>>((token) => kb.getWord(sha1.convert(utf8.encode(token)).toString())),
       )).forEach((word) {
-        words[_tfidf(metadata, word, tokens.length, tokens.where((t) => t == word.word).length)] = word;
-      });
+        var tfidf = _tfidf(metadata, word, tokens.length, tokens.where((t) => t == word.word).length);
+        var similarity = 0.0;
 
-      // tokens.forEach((token) async {
-      //   var word =
-      //       await kb.getWord(sha1.convert(utf8.encode(token)).toString());
-      // });
+        if (useFastText) {
+          var wordVector = Injector.appInstance.get<FastText>().getWordVector(word.word);
+          // calculate similarity between sentence vector and word vector
+          similarity = cosineSimilarity(sentenceVector!, wordVector);
+        }
+
+        words[tfidf * (useFastText ? similarity : 1.0)] = word;
+      });
 
       var sumOfWeights = words.keys.fold<double>(0, (p, e) => p + e);
 
@@ -139,11 +148,16 @@ class Markov {
 
     if (prefixCount > 0) {
       prefixWords.add(
-        (await anchor.randomPrefix(rand.nextDouble()))!,
+        (useFastText
+            ? await anchor.randomPrefixWithContext(rand.nextDouble(), sentenceVector!)
+            : await anchor.randomPrefix(rand.nextDouble()))!,
       ); // using null-check here since, if [prefixCount] > 0 then [randomPrefix] can't return null
 
       while (prefixWords.first.prefixes.isNotEmpty) {
-        var prefix = await prefixWords.first.randomPrefix(rand.nextDouble());
+        var prefix =
+            (useFastText
+                ? await prefixWords.first.randomPrefixWithContext(rand.nextDouble(), sentenceVector!)
+                : await prefixWords.first.randomPrefix(rand.nextDouble()));
         prefixWords.insert(0, prefix!); // null-check used here here because of the while condition above
 
         if (prefixWords.length >= prefixCount) {
@@ -166,10 +180,17 @@ class Markov {
     var suffixCount = anchor.randomDistFromTail(rand.nextDouble());
 
     if (suffixCount > 0) {
-      suffixWords.add((await anchor.randomSuffix(rand.nextDouble()))!); // null-check same as above
+      suffixWords.add(
+        (useFastText
+            ? await anchor.randomSuffixWithContext(rand.nextDouble(), sentenceVector!)
+            : await anchor.randomSuffix(rand.nextDouble()))!,
+      ); // null-check same as above
 
       while (suffixWords.last.suffixes.isNotEmpty) {
-        var suffix = await suffixWords.last.randomSuffix(rand.nextDouble());
+        var suffix =
+            (useFastText
+                ? await suffixWords.last.randomSuffixWithContext(rand.nextDouble(), sentenceVector!)
+                : await suffixWords.last.randomSuffix(rand.nextDouble()));
         suffixWords.add(suffix!); // null-check same as above
 
         if (suffixWords.length >= suffixCount) {

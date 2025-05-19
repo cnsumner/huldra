@@ -209,6 +209,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.0"
+  fasttext:
+    dependency: "direct main"
+    description:
+      path: "../fasttext"
+      relative: true
+    source: path
+    version: "1.0.0"
   ffi:
     dependency: transitive
     description:
@@ -357,10 +364,10 @@ packages:
     dependency: "direct main"
     description:
       name: nyxx
-      sha256: "0e5cd446f3997fdc44e28c36e29eae1e1e6987bbd6d366de7e2d66a7411a56e1"
+      sha256: a5d1fe79718c3021faddcbca83ca1b10b206a32e7966e39dee526a1c98069d3e
       url: "https://pub.dev"
     source: hosted
-    version: "6.6.0"
+    version: "6.6.1"
   nyxx_extensions:
     dependency: "direct main"
     description:
@@ -658,4 +665,4 @@ packages:
     source: hosted
     version: "3.1.1"
 sdks:
-  dart: ">=3.7.0 <4.0.0"
+  dart: ">=3.7.2 <4.0.0"
