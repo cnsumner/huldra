@@ -1,6 +1,6 @@
 name: huldra
 description: A deranged discord bot.
-version: 0.10.2
+version: 0.10.3
 
 environment:
   sdk: "^3.7.0"
@@ -9,7 +9,7 @@ dependencies:
   crypto: ^3.0.1
   drift: ^2.3.0
   injector: ^4.0.0
-  nyxx: ^6.6.0
+  nyxx: ^6.6.1
   nyxx_extensions: ^4.3.0
   path: ^1.8.0
   sqlite3: ^2.7.5
