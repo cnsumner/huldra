@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_classes_with_only_static_members, avoid_print
+
 import 'dart:convert';
 import 'dart:math';
 
@@ -26,62 +28,66 @@ class Markov {
   /// Train off of a sample array
   ///
   /// Trains the markov chain off of [tokens], converting them into [Word] objects
-  static Future<MetaData> train(MetaData metadata, Map<String, Word> wordMap, List<String> tokens) async {
-    var kb = Injector.appInstance.get<KnowledgeBase>();
+  static Future<MetaData> train(
+    MetaData metadata,
+    Map<String, Word> wordMap,
+    List<String> tokens,
+  ) async {
+    final kb = Injector.appInstance.get<KnowledgeBase>();
 
-    var _msgCount = metadata.msgCount + 1;
-    var _wordCount = metadata.wordCount;
+    final msgCount = metadata.msgCount + 1;
+    var wordCount = metadata.wordCount;
 
-    var dupeCheck = <String, bool>{};
+    final dupeCheck = <String, bool>{};
 
-    var keys = tokens.map((token) => sha1.convert(utf8.encode(token)).toString());
+    final keys = tokens.map((token) => sha1.convert(utf8.encode(token)).toString());
 
-    var words = (await kb.getWords(keys.where((key) => !wordMap.containsKey(key)).toList()));
+    final words = await kb.getWords(keys.where((key) => !wordMap.containsKey(key)).toList());
 
-    words.forEach((word) {
+    for (final word in words) {
       wordMap.putIfAbsent(word.wordHash, () => word);
-    });
+    }
 
     for (var i = 0; i < tokens.length; i++) {
-      var key = keys.elementAt(i);
+      final key = keys.elementAt(i);
 
       Word word;
 
       word =
           wordMap[key] ??
           () {
-            _wordCount++;
+            wordCount++;
             return WordExtensions.constructWord(key, tokens[i]);
           }();
 
-      var _totalOccurances = word.totalOccurances;
-      var _msgOccurances = word.msgOccurances;
+      var totalOccurances = word.totalOccurances;
+      var msgOccurances = word.msgOccurances;
 
       word.distFromHead.update(i, (value) => value + 1, ifAbsent: () => 1);
       word.distFromTail.update((tokens.length - 1) - i, (value) => value + 1, ifAbsent: () => 1);
 
-      _totalOccurances++;
+      totalOccurances++;
 
       dupeCheck.update(
         key,
         (value) => true,
         ifAbsent: () {
-          _msgOccurances++;
+          msgOccurances++;
           return true;
         },
       );
 
       if (i != 0) {
-        var prefixKey = sha1.convert(utf8.encode(tokens[i - 1])).toString();
+        final prefixKey = sha1.convert(utf8.encode(tokens[i - 1])).toString();
         word.prefixes.update(prefixKey, (value) => value + 1, ifAbsent: () => 1);
       }
 
       if (i != tokens.length - 1) {
-        var suffixKey = sha1.convert(utf8.encode(tokens[i + 1])).toString();
+        final suffixKey = sha1.convert(utf8.encode(tokens[i + 1])).toString();
         word.suffixes.update(suffixKey, (value) => value + 1, ifAbsent: () => 1);
       }
 
-      wordMap[key] = word.copyWith(totalOccurances: _totalOccurances, msgOccurances: _msgOccurances);
+      wordMap[key] = word.copyWith(totalOccurances: totalOccurances, msgOccurances: msgOccurances);
 
       // await kb.updateWord(word.copyWith(
       //     totalOccurances: _totalOccurances, msgOccurances: _msgOccurances));
@@ -95,43 +101,52 @@ class Markov {
     // await kb.updateMetadata(
     //     metadata.copyWith(msgCount: _msgCount, wordCount: _wordCount));
 
-    return metadata.copyWith(msgCount: _msgCount, wordCount: _wordCount);
+    return metadata.copyWith(msgCount: msgCount, wordCount: wordCount);
   }
 
   static Future<String> generate(List<String> tokens) async {
-    var kb = Injector.appInstance.get<KnowledgeBase>();
-    var useFastText = Injector.appInstance.get<YamlConfig>().getBool('useFastText');
-    var rand = Random(DateTime.now().millisecondsSinceEpoch);
+    final kb = Injector.appInstance.get<KnowledgeBase>();
+    final useFastText = Injector.appInstance.get<YamlConfig>().getBool('useFastText');
+    final rand = Random(DateTime.now().millisecondsSinceEpoch);
 
-    var metadata = await kb.getMetadata();
+    final metadata = await kb.getMetadata();
 
     Word? anchor;
 
-    var sentenceVector = useFastText ? Injector.appInstance.get<FastText>().getSentenceVector(tokens.join(' ')) : null;
+    var sentenceVector = useFastText
+        ? Injector.appInstance.get<FastText>().getSentenceVector(tokens.join(' '))
+        : null;
 
     if (tokens.isNotEmpty) {
-      var words = <double, Word>{};
+      final words = <double, Word>{};
 
-      (await Future.wait<Word>(
-        tokens.map<Future<Word>>((token) => kb.getWord(sha1.convert(utf8.encode(token)).toString())),
-      )).forEach((word) {
-        var tfidf = _tfidf(metadata, word, tokens.length, tokens.where((t) => t == word.word).length);
+      for (final word in (await Future.wait<Word>(
+        tokens.map<Future<Word>>(
+          (token) => kb.getWord(sha1.convert(utf8.encode(token)).toString()),
+        ),
+      ))) {
+        final tfidf = _tfidf(
+          metadata,
+          word,
+          tokens.length,
+          tokens.where((t) => t == word.word).length,
+        );
         var similarity = 0.0;
 
         if (useFastText) {
-          var wordVector = Injector.appInstance.get<FastText>().getWordVector(word.word);
+          final wordVector = Injector.appInstance.get<FastText>().getWordVector(word.word);
           // calculate similarity between sentence vector and word vector
           similarity = cosineSimilarity(sentenceVector!, wordVector);
         }
 
         words[tfidf * (useFastText ? similarity : 1.0)] = word;
-      });
+      }
 
-      var sumOfWeights = words.keys.fold<double>(0, (p, e) => p + e);
+      final sumOfWeights = words.keys.fold<double>(0, (p, e) => p + e);
 
       var r = rand.nextDouble() * sumOfWeights;
 
-      for (var entry in words.entries) {
+      for (final entry in words.entries) {
         r -= entry.key;
 
         if (r <= 0) {
@@ -141,10 +156,15 @@ class Markov {
       }
     }
 
-    anchor ??= await kb.randomWord().getSingle();
+    if (anchor == null) {
+      anchor = await kb.randomWord().getSingle();
+      sentenceVector = useFastText
+          ? Injector.appInstance.get<FastText>().getWordVector(anchor.word)
+          : null;
+    }
 
-    var prefixWords = <Word>[];
-    var prefixCount = anchor.randomDistFromHead(rand.nextDouble());
+    final prefixWords = <Word>[];
+    final prefixCount = anchor.randomDistFromHead(rand.nextDouble());
 
     if (prefixCount > 0) {
       prefixWords.add(
@@ -154,17 +174,24 @@ class Markov {
       ); // using null-check here since, if [prefixCount] > 0 then [randomPrefix] can't return null
 
       while (prefixWords.first.prefixes.isNotEmpty) {
-        var prefix =
-            (useFastText
-                ? await prefixWords.first.randomPrefixWithContext(rand.nextDouble(), sentenceVector!)
-                : await prefixWords.first.randomPrefix(rand.nextDouble()));
-        prefixWords.insert(0, prefix!); // null-check used here here because of the while condition above
+        final prefix = (useFastText
+            ? await prefixWords.first.randomPrefixWithContext(
+                rand.nextDouble(),
+                sentenceVector!,
+              )
+            : await prefixWords.first.randomPrefix(rand.nextDouble()));
+        prefixWords.insert(
+          0,
+          prefix!,
+        ); // null-check used here here because of the while condition above
 
         if (prefixWords.length >= prefixCount) {
           if (prefix.distFromHead.containsKey(0)) {
             break;
           } else if (prefixWords.length / prefixCount > 1.5) {
-            var lastHeadIndex = prefixWords.takeWhile((word) => !word.distFromHead.containsKey(0)).length;
+            final lastHeadIndex = prefixWords
+                .takeWhile((word) => !word.distFromHead.containsKey(0))
+                .length;
 
             if (lastHeadIndex < prefixWords.length) {
               prefixWords.removeRange(0, lastHeadIndex);
@@ -176,8 +203,8 @@ class Markov {
       }
     }
 
-    var suffixWords = <Word>[];
-    var suffixCount = anchor.randomDistFromTail(rand.nextDouble());
+    final suffixWords = <Word>[];
+    final suffixCount = anchor.randomDistFromTail(rand.nextDouble());
 
     if (suffixCount > 0) {
       suffixWords.add(
@@ -187,17 +214,18 @@ class Markov {
       ); // null-check same as above
 
       while (suffixWords.last.suffixes.isNotEmpty) {
-        var suffix =
-            (useFastText
-                ? await suffixWords.last.randomSuffixWithContext(rand.nextDouble(), sentenceVector!)
-                : await suffixWords.last.randomSuffix(rand.nextDouble()));
+        final suffix = (useFastText
+            ? await suffixWords.last.randomSuffixWithContext(rand.nextDouble(), sentenceVector!)
+            : await suffixWords.last.randomSuffix(rand.nextDouble()));
         suffixWords.add(suffix!); // null-check same as above
 
         if (suffixWords.length >= suffixCount) {
           if (suffix.distFromTail.containsKey(0)) {
             break;
           } else if (suffixWords.length / suffixCount > 1.5) {
-            var lastTailIndex = suffixWords.reversed.takeWhile((word) => !word.distFromTail.containsKey(0)).length;
+            final lastTailIndex = suffixWords.reversed
+                .takeWhile((word) => !word.distFromTail.containsKey(0))
+                .length;
 
             if (lastTailIndex < suffixWords.length) {
               suffixWords.removeRange(lastTailIndex + 1, suffixWords.length);

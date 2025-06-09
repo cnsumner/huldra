@@ -6,11 +6,12 @@
 		{
 			"label": "Build",
 			"type": "shell",
+			"command": "dart compile exe ./bin/main.dart -o ./build/huldra.exe",
 			"windows": {
-				"command": "dart2native ./bin/main.dart -o ./build/huldra.exe"
+				"command": "dart compile exe --target-os=windows --target-arch=arm64 ./bin/main.dart -o ./build/huldra.exe"
 			},
 			"linux": {
-				"command": "dart2native ./bin/main.dart -o ./build/huldra"
+				"command": "dart compile exe --target-os=linux --target-arch=arm64 ./bin/main.dart -o ./build/huldra"
 			},
 			"group": {
 				"kind": "build",
@@ -18,9 +19,9 @@
 			}
 		},
 		{
-			"type": "pub",
-			"command": "watch",
-			"problemMatcher": ["$dart-pub-build_runner"],
+			"type": "process",
+			"command": "dart pub run build_runner watch",
+			"problemMatcher": ["$dart-build_runner"],
 			"group": "build",
 			"label": "pub: build_runner watch"
 		}

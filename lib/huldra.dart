@@ -1,14 +1,16 @@
+// ignore_for_file: avoid_print
+
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:drift/native.dart';
+import 'package:huldra/extensions/word_extensions.dart';
 import 'package:huldra/markov/markov.dart';
 import 'package:huldra/schema/knowledge_base.dart';
-import 'package:injector/injector.dart';
-import 'package:drift/native.dart';
-import 'package:nyxx/nyxx.dart';
 import 'package:huldra/schema/raw_data.dart' as tables;
-import 'package:huldra/extensions/word_extensions.dart';
+import 'package:injector/injector.dart';
+import 'package:nyxx/nyxx.dart';
 import 'package:nyxx_extensions/nyxx_extensions.dart';
 
 class Huldra {
@@ -17,12 +19,13 @@ class Huldra {
   int ownerId;
 
   Huldra(this.bot, this.probability, this.ownerId) {
-    var kb = Injector.appInstance.get<KnowledgeBase>();
+    final kb = Injector.appInstance.get<KnowledgeBase>();
 
     bot.onMessageCreate.listen((e) async {
       // ignore bot messages and empty messages
-      var author = await e.member?.get();
-      if (author?.user?.isBot == true || (e.message.content.isEmpty && e.message.attachments.isEmpty)) {
+      final author = await e.member?.get();
+      if (author?.user?.isBot == true ||
+          (e.message.content.isEmpty && e.message.attachments.isEmpty)) {
         print('Ignoring bot or empty message: ${e.message.id.value}');
       }
       // process commands
@@ -30,28 +33,31 @@ class Huldra {
         await _processCommands(e);
       }
       // process bot mentions
-      else if (e.message.mentions.where((mention) => mention.id.compareTo(bot.user.id) == 0).isNotEmpty) {
-        var guildChannel = (await e.message.channel.get()) as GuildChannel;
-        var effectivePermissions = await guildChannel.computePermissionsFor(
+      else if (e.message.mentions
+          .where((mention) => mention.id.compareTo(bot.user.id) == 0)
+          .isNotEmpty) {
+        final guildChannel = (await e.message.channel.get()) as GuildChannel;
+        final effectivePermissions = await guildChannel.computePermissionsFor(
           await guildChannel.guild.members.get(bot.user.id),
         );
 
         if (effectivePermissions.canSendMessages == false) {
-          print('Cannot send message in channel ${e.message.channelId.toString()} due to permissions');
+          print('Cannot send message in channel ${e.message.channelId} due to permissions');
           return;
         }
         await e.message.channel.triggerTyping();
 
         await _addMessage(e.message, e.guild?.id)
             .whenComplete(() async {
-              var input =
-                  e.message.content.split(' ')
-                    ..removeAt(0)
-                    ..removeWhere((word) => word == '');
+              final input = e.message.content.split(' ')
+                ..removeAt(0)
+                ..removeWhere((word) => word == '');
 
-              var reply = await generateNonDuplicate(input, input.join(' ').trim());
+              final reply = await generateNonDuplicate(input, input.join(' ').trim());
 
-              await Future.delayed(Duration(milliseconds: 100 * reply.split(' ').length.clamp(5, 100)));
+              await Future.delayed(
+                Duration(milliseconds: 100 * reply.split(' ').length.clamp(5, 100)),
+              );
 
               await e.message.channel.sendMessage(MessageBuilder(content: reply));
               print('sent $reply');
@@ -63,17 +69,17 @@ class Huldra {
       }
       // default case. respond normally
       else {
-        var rand = Random(DateTime.now().millisecondsSinceEpoch);
-        var willReply = (rand.nextInt(probability) + 1) == probability;
+        final rand = Random(DateTime.now().millisecondsSinceEpoch);
+        final willReply = (rand.nextInt(probability) + 1) == probability;
 
         if (willReply) {
-          var guildChannel = (await e.message.channel.get()) as GuildChannel;
-          var effectivePermissions = await guildChannel.computePermissionsFor(
+          final guildChannel = (await e.message.channel.get()) as GuildChannel;
+          final effectivePermissions = await guildChannel.computePermissionsFor(
             await guildChannel.guild.members.get(bot.user.id),
           );
 
           if (effectivePermissions.canSendMessages == false) {
-            print('Cannot send message in channel ${e.message.channelId.toString()} due to permissions');
+            print('Cannot send message in channel ${e.message.channelId} due to permissions');
             return;
           }
 
@@ -82,20 +88,21 @@ class Huldra {
 
         await _addMessage(e.message, e.guild?.id).whenComplete(() async {
           if (willReply) {
-            var reply =
-                (await generateNonDuplicate(
-                  e.message.content.split(' ')..removeWhere((word) => word == ''),
-                  e.message.content,
-                )).trim();
+            final reply = (await generateNonDuplicate(
+              e.message.content.split(' ')..removeWhere((word) => word == ''),
+              e.message.content,
+            )).trim();
 
-            await Future.delayed(Duration(milliseconds: 100 * reply.split(' ').length.clamp(5, 100)));
+            await Future.delayed(
+              Duration(milliseconds: 100 * reply.split(' ').length.clamp(5, 100)),
+            );
 
             try {
               await e.message.channel.sendMessage(MessageBuilder(content: reply));
               print('sent $reply');
             } catch (error) {
               print(
-                '[${DateTime.now().toUtc().toIso8601String()}]: Encountered error [$error] while sending response to message [${e.message.id.toString()}] in channel [${e.message.channelId.toString()}]',
+                '[${DateTime.now().toUtc().toIso8601String()}]: Encountered error [$error] while sending response to message [${e.message.id}] in channel [${e.message.channelId}]',
               );
             }
           }
@@ -113,11 +120,11 @@ class Huldra {
 
   Future<bool> _addMessage(Message m, Snowflake? guildId, {bool printDebugLogs = true}) async {
     if (guildId == null) {
-      print("Skipping message ${m.id.toString()}: guild is null. this probably shouldn't happen");
+      print("Skipping message ${m.id}: guild is null. this probably shouldn't happen");
       return false;
     }
 
-    var message = tables.Message(
+    final message = tables.Message(
       id: m.id.toString(),
       guild: guildId.toString(),
       channel: m.channel.id.toString(),
@@ -126,29 +133,28 @@ class Huldra {
       content: m.content,
     );
 
-    var attachments = <tables.Attachment>[];
+    final attachments = <tables.Attachment>[];
 
-    if (m.attachments.isNotEmpty) {
-      m.attachments.forEach((attachment) {
-        attachments.add(
-          tables.Attachment(
-            id: attachment.id.toString(),
-            guild: guildId.toString(),
-            channel: m.channel.id.toString(),
-            url: attachment.url.toString(),
-            filename: attachment.fileName,
-          ),
-        );
-      });
-    }
+    attachments.addAll(
+      m.attachments.map(
+        (attachment) => tables.Attachment(
+          id: attachment.id.toString(),
+          guild: guildId.toString(),
+          channel: m.channel.id.toString(),
+          url: attachment.url.toString(),
+          filename: attachment.fileName,
+        ),
+      ),
+    );
 
-    var messageAttachments = <tables.MessageAttachment>[];
+    final messageAttachments = <tables.MessageAttachment>[];
 
-    if (attachments.isNotEmpty) {
-      attachments.forEach((attachment) {
-        messageAttachments.add(tables.MessageAttachment(attachmentId: attachment.id, messageId: message.id));
-      });
-    }
+    messageAttachments.addAll(
+      attachments.map(
+        (attachment) =>
+            tables.MessageAttachment(attachmentId: attachment.id, messageId: message.id),
+      ),
+    );
 
     var error = false;
 
@@ -164,7 +170,7 @@ class Huldra {
                 (e as SqliteException).message.contains('UNIQUE constraint failed: messages.id')) {
               _printLogIf('Skipping message already in db', printDebugLogs);
             } else {
-              print('Failed to add message to db: ${e.toString()}');
+              print('Failed to add message to db: $e');
             }
             error = true;
           },
@@ -173,73 +179,71 @@ class Huldra {
     if (error) {
       return false;
     } else {
-      var kb = Injector.appInstance.get<KnowledgeBase>();
+      final kb = Injector.appInstance.get<KnowledgeBase>();
       var metadata = await kb.getMetadata();
-      var wordMap = <String, Word>{};
+      final wordMap = <String, Word>{};
       metadata = await Markov.train(
         metadata,
         wordMap,
-        message.content.replaceFirst(RegExp('<@!?${bot.user.id.toString()}>'), '').split(' ')
+        message.content.replaceFirst(RegExp('<@!?${bot.user.id}>'), '').split(' ')
           ..removeWhere((word) => word == ''),
       );
 
       await kb.updateMetadata(metadata);
-      await kb.updateWords(wordMap.entries.map<Word>((entry) => entry.value).toList(growable: false));
+      await kb.updateWords(
+        wordMap.entries.map<Word>((entry) => entry.value).toList(growable: false),
+      );
 
       return true;
     }
   }
 
   Future<int> _addMessages(List<Message> messages, Snowflake guildId) async {
-    var initialCount = messages.length;
-
-    // create key value map of message id to author isBot status
-    var messageFilter = <int, bool>{};
-    for (var message in messages) {
-      var authorUser = await bot.users.get(message.author.id);
-      messageFilter[message.id.value] = authorUser.isBot;
-    }
+    final initialCount = messages.length;
 
     // remove bot messages
-    messages.retainWhere((m) => messageFilter[m.id.value] == false);
+    messages.removeWhere((m) => m.author is User && (m.author as User).isBot);
 
-    _printLogIf('Skipping ${initialCount - messages.length} bot messages...', initialCount - messages.length > 0);
+    _printLogIf(
+      'Skipping ${initialCount - messages.length} bot messages...',
+      initialCount - messages.length > 0,
+    );
 
-    var dbMessages =
-        messages
-            .map(
-              (m) => tables.Message(
-                id: m.id.toString(),
-                guild: guildId.toString(),
-                channel: m.channel.id.toString(),
-                author: m.author.id.toString(),
-                timestamp: m.timestamp,
-                content: m.content,
-              ),
-            )
-            .toList();
+    final dbMessages = messages
+        .map(
+          (m) => tables.Message(
+            id: m.id.toString(),
+            guild: guildId.toString(),
+            channel: m.channel.id.toString(),
+            author: m.author.id.toString(),
+            timestamp: m.timestamp,
+            content: m.content,
+          ),
+        )
+        .toList();
 
-    var dbAttachments = <tables.Attachment>[];
-    var dbMessageAttachments = <tables.MessageAttachment>[];
+    final dbAttachments = <tables.Attachment>[];
+    final dbMessageAttachments = <tables.MessageAttachment>[];
 
-    messages.forEach((m) {
-      if (m.attachments.isNotEmpty) {
-        m.attachments.forEach((attachment) {
-          dbAttachments.add(
-            tables.Attachment(
-              id: attachment.id.toString(),
-              guild: guildId.toString(),
-              channel: m.channel.id.toString(),
-              url: attachment.url.toString(),
-              filename: attachment.fileName,
-            ),
-          );
-          dbMessageAttachments.add(
-            tables.MessageAttachment(attachmentId: attachment.id.toString(), messageId: m.id.toString()),
-          );
-        });
+    for (final m in messages) {
+      for (final attachment in m.attachments) {
+        dbAttachments.add(
+          tables.Attachment(
+            id: attachment.id.toString(),
+            guild: guildId.toString(),
+            channel: m.channel.id.toString(),
+            url: attachment.url.toString(),
+            filename: attachment.fileName,
+          ),
+        );
+        dbMessageAttachments.add(
+          tables.MessageAttachment(
+            attachmentId: attachment.id.toString(),
+            messageId: m.id.toString(),
+          ),
+        );
       }
-    });
+    }
 
     return await Injector.appInstance.get<tables.RawData>().insertMessages(
       dbMessages,
@@ -250,40 +254,44 @@ class Huldra {
 
   Future<void> _processCommands(MessageCreateEvent e) async {
     if (e.message.content.startsWith('_fetch') && e.message.author.id.value == ownerId) {
-      var arguments = e.message.content.split(' ')..removeAt(0);
+      final arguments = e.message.content.split(' ')..removeAt(0);
       if (arguments.isNotEmpty && e.guild != null) {
         _fetchMessages(e.guild!.id, Snowflake.parse(arguments[0]));
       } else {
-        await e.message.channel.sendMessage(MessageBuilder(content: 'Invalid arguments or no guild'));
+        await e.message.channel.sendMessage(
+          MessageBuilder(content: 'Invalid arguments or no guild'),
+        );
       }
     } else if (e.message.content.startsWith('_trainall') && e.message.author.id.value == ownerId) {
       _trainAll();
     } else if (e.message.content.startsWith('_query')) {
-      var arguments = e.message.content.split(' ')..removeAt(0);
+      final arguments = e.message.content.split(' ')..removeAt(0);
       if (arguments.isNotEmpty && arguments.length == 1) {
         await _query(arguments[0]).then((value) async {
           await e.message.channel.sendMessage(MessageBuilder(content: value));
         });
       } else {
-        await e.message.channel.sendMessage(MessageBuilder(content: 'Word not specified. Usage: _query [word]'));
+        await e.message.channel.sendMessage(
+          MessageBuilder(content: 'Word not specified. Usage: _query [word]'),
+        );
       }
     }
   }
 
-  void _fetchMessages(Snowflake guildId, Snowflake startId) async {
-    print('Fetching messages after ${startId.toString()}');
+  Future<void> _fetchMessages(Snowflake guildId, Snowflake startId) async {
+    print('Fetching messages after $startId');
 
-    var guild = await bot.guilds.get(guildId);
+    final guild = await bot.guilds.get(guildId);
 
-    var botMember = await guild.members.get(bot.user.id);
+    final botMember = await guild.members.get(bot.user.id);
 
-    var channels = (await guild.fetchChannels()).where((channel) => _channelTypeValid(channel));
+    final channels = (await guild.fetchChannels()).where((channel) => _channelTypeValid(channel));
 
     var totalCountAdded = 0;
     var totalCountFetched = 0;
 
-    for (var channel in channels) {
-      var effectivePermissions = await channel.computePermissionsFor(botMember);
+    for (final channel in channels) {
+      final effectivePermissions = await channel.computePermissionsFor(botMember);
 
       if (!effectivePermissions.canViewChannel || !effectivePermissions.canReadMessageHistory) {
         print('Skipping channel [${channel.name}]: no read permission');
@@ -293,9 +301,9 @@ class Huldra {
       var channelCountAdded = 0;
       var channelCountFetched = 0;
 
-      var messageBuffer = <Message>[];
+      final messageBuffer = <Message>[];
 
-      var messagesStream = (channel as TextChannel).messages.stream(after: startId);
+      final messagesStream = (channel as TextChannel).messages.stream(after: startId);
 
       messagesStream.listen(
         (Message message) async {
@@ -312,7 +320,7 @@ class Huldra {
               totalCountFetched > 0,
             );
 
-            var results = await _addMessages(messageBuffer, guild.id);
+            final results = await _addMessages(messageBuffer, guild.id);
 
             print('Wrote $results messages to database');
 
@@ -326,7 +334,7 @@ class Huldra {
             channelCountFetched += messageBuffer.length;
             totalCountFetched += messageBuffer.length;
 
-            var results = await _addMessages(messageBuffer, guild.id);
+            final results = await _addMessages(messageBuffer, guild.id);
             _printLogIf('Wrote $results messages to database', results > 0);
 
             totalCountAdded += results;
@@ -334,10 +342,7 @@ class Huldra {
           }
 
           print(
-            (channelCountFetched > 0
-                    ? 'Added $channelCountAdded out of $channelCountFetched messages'
-                    : 'No messages to add') +
-                ' from channel ${channel.name}',
+            '${channelCountFetched > 0 ? 'Added $channelCountAdded out of $channelCountFetched messages' : 'No messages to add'} from channel ${channel.name}',
           );
         },
       );
@@ -348,7 +353,7 @@ class Huldra {
     );
   }
 
-  void _trainAll() async {
+  Future<void> _trainAll() async {
     // var metadata = Hive.box('metadata');
     // var kb = Hive.box<Word>('kb');
 
@@ -373,10 +378,10 @@ class Huldra {
     //     'Trained on ${markov.wordCount} words from ${markov.msgCount} messages');
 
     // open corpus file for writing
-    var corpusFile = File('corpus.txt');
-    var sink = corpusFile.openWrite(mode: FileMode.writeOnly);
+    final corpusFile = File('corpus.txt');
+    final sink = corpusFile.openWrite(mode: FileMode.writeOnly);
 
-    var kb = Injector.appInstance.get<KnowledgeBase>();
+    final kb = Injector.appInstance.get<KnowledgeBase>();
 
     await kb.clearKnowledgeBase();
 
@@ -386,8 +391,8 @@ class Huldra {
 
     var messages = await Injector.appInstance.get<tables.RawData>().getPagedMessages(pageSize);
 
-    var stopwatch = Stopwatch();
-    var lastFreq;
+    final stopwatch = Stopwatch();
+    double? lastFreq;
     var performanceBias = 0;
     var direction = 1;
 
@@ -395,18 +400,22 @@ class Huldra {
       stopwatch.reset();
       stopwatch.start();
       var metadata = await kb.getMetadata();
-      var wordMap = <String, Word>{};
+      final wordMap = <String, Word>{};
 
-      for (var message in messages) {
-        var sanitizedMessage = message.content.replaceFirst(RegExp('<@!?${bot.user.id.toString()}>'), '').trim();
-        var tokens = sanitizedMessage.split(' ')..removeWhere((token) => token == '');
+      for (final message in messages) {
+        final sanitizedMessage = message.content
+            .replaceFirst(RegExp('<@!?${bot.user.id}>'), '')
+            .trim();
+        final tokens = sanitizedMessage.split(' ')..removeWhere((token) => token == '');
 
         sink.writeln(sanitizedMessage);
         await sink.flush();
         metadata = await Markov.train(metadata, wordMap, tokens);
       }
 
-      await kb.updateWords(wordMap.entries.map<Word>((entry) => entry.value).toList(growable: false));
+      await kb.updateWords(
+        wordMap.entries.map<Word>((entry) => entry.value).toList(growable: false),
+      );
 
       await kb.updateMetadata(metadata);
 
@@ -416,13 +425,16 @@ class Huldra {
 
       print('Trained ${metadata.wordCount} words from $count messages');
 
-      var msgCount = messages.length;
+      final msgCount = messages.length;
 
-      messages = await Injector.appInstance.get<tables.RawData>().getPagedMessages(pageSize, lastId: messages.last.id);
+      messages = await Injector.appInstance.get<tables.RawData>().getPagedMessages(
+        pageSize,
+        lastId: messages.last.id,
+      );
 
       stopwatch.stop();
 
-      var freq = msgCount / stopwatch.elapsedMilliseconds;
+      final freq = msgCount / stopwatch.elapsedMilliseconds;
 
       if (lastFreq == null) {
         lastFreq = freq;
@@ -486,17 +498,17 @@ class Huldra {
   }
 
   Future<String> _query(String word) async {
-    var kb = Injector.appInstance.get<KnowledgeBase>();
+    final kb = Injector.appInstance.get<KnowledgeBase>();
 
-    var words = await kb.queryWords(word);
+    final words = await kb.queryWords(word);
 
-    var results = await Future.wait(
+    final results = await Future.wait(
       words.map<Future<String>>((word) {
         return word.toFormattedString();
       }),
     );
 
-    var formattedResults = results.join();
+    final formattedResults = results.join();
 
     return 'Results: $formattedResults';
   }
@@ -529,10 +541,10 @@ class Huldra {
     }
 
     if (output.trim().compareTo(original.trim()) == 0) {
-      var rand = Random(DateTime.now().millisecondsSinceEpoch);
+      final rand = Random(DateTime.now().millisecondsSinceEpoch);
       output = rand.nextInt(2) == 0 ? output : (await Markov.generate([]));
     }
 
-    return output.replaceAll(RegExp('<@!?${bot.user.id.toString()}>'), '').trim();
+    return output.replaceAll(RegExp('<@!?${bot.user.id}>'), '').trim();
   }
 }

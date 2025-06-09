@@ -26,10 +26,8 @@ class Attachments extends Table {
 }
 
 class MessageAttachments extends Table {
-  TextColumn get messageId =>
-      text().customConstraint('REFERENCES Messages(id)')();
-  TextColumn get attachmentId =>
-      text().customConstraint('REFERENCES Attachments(id)')();
+  TextColumn get messageId => text().references(Messages, #id)();
+  TextColumn get attachmentId => text().references(Attachments, #id)();
 
   @override
   Set<Column> get primaryKey => {messageId, attachmentId};
@@ -37,7 +35,7 @@ class MessageAttachments extends Table {
 
 @DriftDatabase(tables: [Messages, Attachments, MessageAttachments])
 class RawData extends _$RawData {
-  RawData(QueryExecutor e) : super(e);
+  RawData(super.e);
 
   @override
   int get schemaVersion => 1;
@@ -46,64 +44,59 @@ class RawData extends _$RawData {
 
   Future<List<Attachment>> get allAttachments => select(attachments).get();
 
-  Future<List<MessageAttachment>> get allMessageAttachments =>
-      select(messageAttachments).get();
+  Future<List<MessageAttachment>> get allMessageAttachments => select(messageAttachments).get();
 
   Future<List<Message>> getPagedMessages(int pageSize, {String lastId = '0'}) {
-    var greaterThan = CustomExpression<bool>('Id > $lastId');
+    final greaterThan = CustomExpression<bool>('Id > $lastId');
 
     return (select(messages)
-          ..orderBy(
-              [(u) => OrderingTerm(expression: u.id, mode: OrderingMode.asc)])
+          ..orderBy([(u) => OrderingTerm(expression: u.id)])
           ..where((tbl) => greaterThan)
           ..limit(pageSize))
         .get();
   }
 
-  Future<void> insertMessage(Message message, List<Attachment> attachmentList,
-      List<MessageAttachment> messageAttachmentList) {
+  Future<void> insertMessage(
+    Message message,
+    List<Attachment> attachmentList,
+    List<MessageAttachment> messageAttachmentList,
+  ) {
     return transaction(() async {
       await into(messages).insert(message, mode: InsertMode.insert);
 
       await batch((batch) {
-        batch.insertAll(attachments, attachmentList,
-            mode: InsertMode.insertOrIgnore);
+        batch.insertAll(attachments, attachmentList, mode: InsertMode.insertOrIgnore);
       });
 
       await batch((batch) {
-        batch.insertAll(messageAttachments, messageAttachmentList,
-            mode: InsertMode.insert);
+        batch.insertAll(messageAttachments, messageAttachmentList, mode: InsertMode.insert);
       });
     });
   }
 
   Future<int> insertMessages(
-      List<Message> messageList,
-      List<Attachment> attachmentList,
-      List<MessageAttachment> messageAttachmentList) {
+    List<Message> messageList,
+    List<Attachment> attachmentList,
+    List<MessageAttachment> messageAttachmentList,
+  ) {
     return transaction<int>(() async {
-      var countQuery =
-          (selectOnly(messages)..addColumns([messages.id.count()]));
+      final countQuery = (selectOnly(messages)..addColumns([messages.id.count()]));
 
-      var messageCount =
-          (await countQuery.getSingle()).read(messages.id.count()) ?? 0;
+      final messageCount = (await countQuery.getSingle()).read(messages.id.count()) ?? 0;
 
       await batch((batch) {
         batch.insertAll(messages, messageList, mode: InsertMode.insertOrIgnore);
       });
 
-      var insertedMessagesCount =
-          ((await countQuery.getSingle()).read(messages.id.count()) ?? 0) -
-              messageCount;
+      final insertedMessagesCount =
+          ((await countQuery.getSingle()).read(messages.id.count()) ?? 0) - messageCount;
 
       await batch((batch) {
-        batch.insertAll(attachments, attachmentList,
-            mode: InsertMode.insertOrIgnore);
+        batch.insertAll(attachments, attachmentList, mode: InsertMode.insertOrIgnore);
       });
 
       await batch((batch) {
-        batch.insertAll(messageAttachments, messageAttachmentList,
-            mode: InsertMode.insertOrIgnore);
+        batch.insertAll(messageAttachments, messageAttachmentList, mode: InsertMode.insertOrIgnore);
       });
 
       return Future.value(insertedMessagesCount);
@@ -111,8 +104,9 @@ class RawData extends _$RawData {
   }
 
   @override
-  MigrationStrategy get migration =>
-      MigrationStrategy(beforeOpen: (details) async {
-        await customStatement('PRAGMA foreign_keys = ON');
-      });
+  MigrationStrategy get migration => MigrationStrategy(
+    beforeOpen: (details) async {
+      await customStatement('PRAGMA foreign_keys = ON');
+    },
+  );
 }
