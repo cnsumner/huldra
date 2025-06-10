@@ -305,46 +305,48 @@ class Huldra {
 
       final messagesStream = (channel as TextChannel).messages.stream(after: startId);
 
-      messagesStream.listen(
-        (Message message) async {
-          messageBuffer.add(message);
+      final streamIter = StreamIterator<Message>(messagesStream);
 
-          if (messageBuffer.length >= 1000) {
-            print('Buffer full, writing 1k messages to db...');
+      while (await streamIter.moveNext()) {
+        final message = streamIter.current;
 
-            channelCountFetched += messageBuffer.length;
-            totalCountFetched += messageBuffer.length;
+        messageBuffer.add(message);
 
-            _printLogIf(
-              'Fetched $totalCountFetched messages so far, up to ${messageBuffer.last.createdAt}...',
-              totalCountFetched > 0,
-            );
+        if (messageBuffer.length >= 1000) {
+          print('Buffer full, writing 1k messages to db...');
 
-            final results = await _addMessages(messageBuffer, guild.id);
+          channelCountFetched += messageBuffer.length;
+          totalCountFetched += messageBuffer.length;
 
-            print('Wrote $results messages to database');
-
-            totalCountAdded += results;
-            channelCountAdded += results;
-            messageBuffer.clear();
-          }
-        },
-        onDone: () async {
-          if (messageBuffer.isNotEmpty) {
-            channelCountFetched += messageBuffer.length;
-            totalCountFetched += messageBuffer.length;
-
-            final results = await _addMessages(messageBuffer, guild.id);
-            _printLogIf('Wrote $results messages to database', results > 0);
-
-            totalCountAdded += results;
-            channelCountAdded += results;
-          }
-
-          print(
-            '${channelCountFetched > 0 ? 'Added $channelCountAdded out of $channelCountFetched messages' : 'No messages to add'} from channel ${channel.name}',
+          _printLogIf(
+            'Fetched $totalCountFetched messages so far, up to ${messageBuffer.last.createdAt}...',
+            totalCountFetched > 0,
           );
-        },
+
+          final results = await _addMessages(messageBuffer, guild.id);
+
+          print('Wrote $results messages to database');
+
+          totalCountAdded += results;
+          channelCountAdded += results;
+          messageBuffer.clear();
+        }
+      }
+
+      // write remaining messages in buffer
+      if (messageBuffer.isNotEmpty) {
+        channelCountFetched += messageBuffer.length;
+        totalCountFetched += messageBuffer.length;
+
+        final results = await _addMessages(messageBuffer, guild.id);
+        _printLogIf('Wrote $results messages to database', results > 0);
+
+        totalCountAdded += results;
+        channelCountAdded += results;
+      }
+
+      print(
+        '${channelCountFetched > 0 ? 'Added $channelCountAdded out of $channelCountFetched messages' : 'No messages added'} from channel ${channel.name}',
       );
     }
 
@@ -409,9 +411,11 @@ class Huldra {
         final tokens = sanitizedMessage.split(' ')..removeWhere((token) => token == '');
 
         sink.writeln(sanitizedMessage);
-        await sink.flush();
+
         metadata = await Markov.train(metadata, wordMap, tokens);
       }
+
+      await sink.flush();
 
       await kb.updateWords(
         wordMap.entries.map<Word>((entry) => entry.value).toList(growable: false),
