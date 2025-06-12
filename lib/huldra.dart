@@ -264,6 +264,9 @@ class Huldra {
       }
     } else if (e.message.content.startsWith('_trainall') && e.message.author.id.value == ownerId) {
       _trainAll();
+    } else if (e.message.content.startsWith('_exportCorpus') &&
+        e.message.author.id.value == ownerId) {
+      _exportCorpus();
     } else if (e.message.content.startsWith('_query')) {
       final arguments = e.message.content.split(' ')..removeAt(0);
       if (arguments.isNotEmpty && arguments.length == 1) {
@@ -380,8 +383,6 @@ class Huldra {
     //     'Trained on ${markov.wordCount} words from ${markov.msgCount} messages');
 
     // open corpus file for writing
-    final corpusFile = File('corpus.txt');
-    final sink = corpusFile.openWrite(mode: FileMode.writeOnly);
 
     final kb = Injector.appInstance.get<KnowledgeBase>();
 
@@ -410,12 +411,8 @@ class Huldra {
             .trim();
         final tokens = sanitizedMessage.split(' ')..removeWhere((token) => token == '');
 
-        sink.writeln(sanitizedMessage);
-
         metadata = await Markov.train(metadata, wordMap, tokens);
       }
-
-      await sink.flush();
 
       await kb.updateWords(
         wordMap.entries.map<Word>((entry) => entry.value).toList(growable: false),
@@ -465,14 +462,11 @@ class Huldra {
       }
     }
 
-    await sink.close();
-
     await kb.getMetadata().then(
       (value) => print('Trained on ${value.wordCount} words from ${value.msgCount} messages'),
     );
 
     await kb.countWords().getSingle().then((value) => print('Kb now contains $value words'));
-    print('Corpus file written to ${corpusFile.path}, use it to train fasttext');
 
     // var words =
     //     messages.map((m) => m.content.split(' ')).expand((w) => w).toList();
@@ -499,6 +493,53 @@ class Huldra {
     //     mostCommon.getRange(0, 50).map((m) => '${m.key}: ${m.value}').toList();
 
     // top50.forEach((w) => print(w));
+  }
+
+  Future<void> _exportCorpus() async {
+    final corpusFile = File('corpus.txt');
+    final sink = corpusFile.openWrite(mode: FileMode.writeOnly);
+
+    final rawData = Injector.appInstance.get<tables.RawData>();
+
+    var messages = await rawData.getPagedMessages(1000);
+
+    String? prevSanitized;
+
+    while (messages.isNotEmpty) {
+      for (final message in messages) {
+        final sanitized = message.content
+            // remove excessive punctuation
+            .replaceAll(RegExp(r'([!?.])\1{1,}'), r'\1')
+            // remove special characters except for some allowed ones
+            .replaceAll(
+              RegExp(r'[^\w\s<@&!:\/\.\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}]', unicode: true),
+              '',
+            )
+            // remove excessive whitespace
+            .replaceAll(RegExp(r'\s+'), ' ')
+            .trim();
+
+        if (sanitized.isEmpty) {
+          _printLogIf('Skipping empty message ${message.id}', true);
+          continue;
+        }
+
+        if (prevSanitized != null && prevSanitized.isNotEmpty) {
+          sink.writeln('$prevSanitized $sanitized ____END_OF_DOCUMENT____');
+        } else {
+          // If there's no previous message, just write the current one
+          sink.writeln(sanitized);
+        }
+        prevSanitized = sanitized;
+      }
+
+      messages = await rawData.getPagedMessages(1000, lastId: messages.last.id);
+    }
+
+    await sink.flush();
+    await sink.close();
+
+    print('Corpus file written to ${corpusFile.path}');
   }
 
   Future<String> _query(String word) async {
