@@ -1,0 +1,14 @@
+targets:
+  $default:
+    builders:
+      drift_dev:
+        options:
+          sql:
+            dialect: sqlite
+            options:
+              version: "3.43.2"
+          # The directory where the schema files are stored:
+          schema_dir: drift_schemas/  # (default)
+          databases:
+            knowledge_base: lib/schema/knowledge_base.dart
+            raw_data: lib/schema/raw_data.dart

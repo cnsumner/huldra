@@ -4,8 +4,8 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
+import 'package:drift/drift.dart';
 import 'package:fasttext/fasttext.dart';
-import 'package:huldra/extensions/word_extensions.dart';
 import 'package:huldra/schema/knowledge_base.dart';
 import 'package:huldra/yaml_config.dart';
 import 'package:injector/injector.dart';
@@ -28,80 +28,65 @@ class Markov {
   /// Train off of a sample array
   ///
   /// Trains the markov chain off of [tokens], converting them into [Word] objects
-  static Future<MetaData> train(
-    MetaData metadata,
-    Map<String, Word> wordMap,
+  static Future<void> train(
     List<String> tokens,
   ) async {
-    final kb = Injector.appInstance.get<KnowledgeBase>();
+    if (tokens.isEmpty) {
+      return;
+    }
 
-    final msgCount = metadata.msgCount + 1;
-    var wordCount = metadata.wordCount;
+    final kb = Injector.appInstance.get<KnowledgeBase>();
 
     final dupeCheck = <String, bool>{};
 
     final keys = tokens.map((token) => sha1.convert(utf8.encode(token)).toString());
 
-    final words = await kb.getWords(keys.where((key) => !wordMap.containsKey(key)).toList());
+    var newWordCount = 0;
 
-    for (final word in words) {
-      wordMap.putIfAbsent(word.wordHash, () => word);
-    }
+    final prefixes = <PrefixesCompanion>[];
+    final suffixes = <SuffixesCompanion>[];
+    final headDistances = <HeadDistancesCompanion>[];
+    final tailDistances = <TailDistancesCompanion>[];
 
     for (var i = 0; i < tokens.length; i++) {
       final key = keys.elementAt(i);
 
-      Word word;
-
-      word =
-          wordMap[key] ??
-          () {
-            wordCount++;
-            return WordExtensions.constructWord(key, tokens[i]);
-          }();
-
-      var totalOccurances = word.totalOccurances;
-      var msgOccurances = word.msgOccurances;
-
-      word.distFromHead.update(i, (value) => value + 1, ifAbsent: () => 1);
-      word.distFromTail.update((tokens.length - 1) - i, (value) => value + 1, ifAbsent: () => 1);
-
-      totalOccurances++;
-
-      dupeCheck.update(
+      final word = await kb.upsertWord(
         key,
-        (value) => true,
-        ifAbsent: () {
-          msgOccurances++;
-          return true;
-        },
+        tokens[i],
+        updateMsgCount: !dupeCheck.containsKey(key),
       );
+
+      if (word.msgOccurances == 1 && word.totalOccurances == 1) {
+        newWordCount++;
+      }
+
+      headDistances.add(HeadDistancesCompanion.insert(wordHash: key, distance: i, count: 1));
+      tailDistances.add(
+        TailDistancesCompanion.insert(wordHash: key, distance: (tokens.length - 1) - i, count: 1),
+      );
+
+      dupeCheck.putIfAbsent(key, () => true);
 
       if (i != 0) {
         final prefixKey = sha1.convert(utf8.encode(tokens[i - 1])).toString();
-        word.prefixes.update(prefixKey, (value) => value + 1, ifAbsent: () => 1);
+        prefixes.add(PrefixesCompanion.insert(wordHash: key, prefixHash: prefixKey, count: 1));
       }
 
       if (i != tokens.length - 1) {
         final suffixKey = sha1.convert(utf8.encode(tokens[i + 1])).toString();
-        word.suffixes.update(suffixKey, (value) => value + 1, ifAbsent: () => 1);
+        suffixes.add(SuffixesCompanion.insert(wordHash: key, suffixHash: suffixKey, count: 1));
       }
-
-      wordMap[key] = word.copyWith(totalOccurances: totalOccurances, msgOccurances: msgOccurances);
-
-      // await kb.updateWord(word.copyWith(
-      //     totalOccurances: _totalOccurances, msgOccurances: _msgOccurances));
     }
 
-    // await kb.updateWords(wordMap.entries
-    //     .where((element) => element.key != null)
-    //     .map<Word>((entry) => entry.value)
-    //     .toList(growable: false));
+    await kb.batch((batch) async {
+      kb.upsertHeadDists(headDistances, batch);
+      kb.upsertTailDists(tailDistances, batch);
+      kb.upsertPrefixes(prefixes, batch);
+      kb.upsertSuffixes(suffixes, batch);
+    });
 
-    // await kb.updateMetadata(
-    //     metadata.copyWith(msgCount: _msgCount, wordCount: _wordCount));
-
-    return metadata.copyWith(msgCount: msgCount, wordCount: wordCount);
+    await kb.updateMetadata(msgCount: 1, wordCount: newWordCount);
   }
 
   static Future<String> generate(List<String> tokens) async {
@@ -113,17 +98,17 @@ class Markov {
 
     Word? anchor;
 
-    var sentenceVector = useFastText
-        ? Injector.appInstance.get<FastText>().getSentenceVector(tokens.join(' '))
-        : null;
+    List<double>? sentenceVector;
 
     if (tokens.isNotEmpty) {
-      final words = <double, Word>{};
+      sentenceVector = useFastText
+          ? Injector.appInstance.get<FastText>().getSentenceVector(tokens.join(' '))
+          : null;
 
-      for (final word in (await Future.wait<Word>(
-        tokens.map<Future<Word>>(
-          (token) => kb.getWord(sha1.convert(utf8.encode(token)).toString()),
-        ),
+      final wordWeightMap = <double, Word>{};
+
+      for (final word in (await kb.getWords(
+        tokens.map((token) => sha1.convert(utf8.encode(token)).toString()).toList(),
       ))) {
         final tfidf = _tfidf(
           metadata,
@@ -139,14 +124,14 @@ class Markov {
           similarity = cosineSimilarity(sentenceVector!, wordVector);
         }
 
-        words[tfidf * (useFastText ? similarity : 1.0)] = word;
+        wordWeightMap[tfidf * (useFastText ? similarity : 1.0)] = word;
       }
 
-      final sumOfWeights = words.keys.fold<double>(0, (p, e) => p + e);
+      final sumOfWeights = wordWeightMap.keys.fold<double>(0, (p, e) => p + e);
 
       var r = rand.nextDouble() * sumOfWeights;
 
-      for (final entry in words.entries) {
+      for (final entry in wordWeightMap.entries) {
         r -= entry.key;
 
         if (r <= 0) {
@@ -164,38 +149,67 @@ class Markov {
     }
 
     final prefixWords = <Word>[];
-    final prefixCount = anchor.randomDistFromHead(rand.nextDouble());
+    final prefixCount = await kb.randomSelectionDao.randomWeightedDistFromHead(
+      anchor.wordHash,
+      rand.nextDouble(),
+    );
 
     if (prefixCount > 0) {
       prefixWords.add(
-        (useFastText
-            ? await anchor.randomPrefixWithContext(rand.nextDouble(), sentenceVector!)
-            : await anchor.randomPrefix(rand.nextDouble()))!,
+        useFastText
+            ? (await kb.randomSelectionDao.randomPrefixWithContext(
+                anchor.wordHash,
+                rand.nextDouble(),
+                sentenceVector!,
+              ))!
+            : (await kb.randomSelectionDao.weightedRandomPrefix(
+                anchor.wordHash,
+                rand.nextDouble(),
+              ))!,
       ); // using null-check here since, if [prefixCount] > 0 then [randomPrefix] can't return null
 
-      while (prefixWords.first.prefixes.isNotEmpty) {
+      while (true) {
         final prefix = (useFastText
-            ? await prefixWords.first.randomPrefixWithContext(
+            ? await kb.randomSelectionDao.randomPrefixWithContext(
+                prefixWords.first.wordHash,
                 rand.nextDouble(),
                 sentenceVector!,
               )
-            : await prefixWords.first.randomPrefix(rand.nextDouble()));
+            : await kb.randomSelectionDao.weightedRandomPrefix(
+                prefixWords.first.wordHash,
+                rand.nextDouble(),
+              ));
+
+        if (prefix == null) {
+          break; // no more prefixes available
+        }
+
         prefixWords.insert(
           0,
-          prefix!,
-        ); // null-check used here here because of the while condition above
+          prefix,
+        );
 
         if (prefixWords.length >= prefixCount) {
-          if (prefix.distFromHead.containsKey(0)) {
+          final headDistances = await kb.getHeadDistances(prefix.wordHash, order: OrderingMode.asc);
+
+          if (headDistances.first.dist == 0) {
             break;
           } else if (prefixWords.length / prefixCount > 1.5) {
-            final lastHeadIndex = prefixWords
-                .takeWhile((word) => !word.distFromHead.containsKey(0))
-                .length;
-
-            if (lastHeadIndex < prefixWords.length) {
-              prefixWords.removeRange(0, lastHeadIndex);
+            // find the first prefix in the list that has a distance of 0, using an async loop
+            var lastHeadIndex = prefixWords.length;
+            for (int i = 0; i < prefixWords.length; i++) {
+              final prefix = prefixWords[i];
+              final headDistances = await kb.getHeadDistances(
+                prefix.wordHash,
+                order: OrderingMode.asc,
+              );
+              if (headDistances.first.dist == 0) {
+                lastHeadIndex = i;
+                break;
+              }
             }
+
+            prefixWords.removeRange(0, lastHeadIndex);
 
             break;
           }
@@ -204,32 +218,67 @@ class Markov {
     }
 
     final suffixWords = <Word>[];
-    final suffixCount = anchor.randomDistFromTail(rand.nextDouble());
+    final suffixCount = await kb.randomSelectionDao.randomWeightedDistFromTail(
+      anchor.wordHash,
+      rand.nextDouble(),
+    );
 
     if (suffixCount > 0) {
       suffixWords.add(
-        (useFastText
-            ? await anchor.randomSuffixWithContext(rand.nextDouble(), sentenceVector!)
-            : await anchor.randomSuffix(rand.nextDouble()))!,
-      ); // null-check same as above
+        useFastText
+            ? (await kb.randomSelectionDao.randomSuffixWithContext(
+                anchor.wordHash,
+                rand.nextDouble(),
+                sentenceVector!,
+              ))!
+            : (await kb.randomSelectionDao.weightedRandomSuffix(
+                anchor.wordHash,
+                rand.nextDouble(),
+              ))!,
+      );
 
-      while (suffixWords.last.suffixes.isNotEmpty) {
+      while (true) {
         final suffix = (useFastText
-            ? await suffixWords.last.randomSuffixWithContext(rand.nextDouble(), sentenceVector!)
-            : await suffixWords.last.randomSuffix(rand.nextDouble()));
-        suffixWords.add(suffix!); // null-check same as above
+            ? await kb.randomSelectionDao.randomSuffixWithContext(
+                suffixWords.last.wordHash,
+                rand.nextDouble(),
+                sentenceVector!,
+              )
+            : await kb.randomSelectionDao.weightedRandomSuffix(
+                suffixWords.last.wordHash,
+                rand.nextDouble(),
+              ));
+
+        if (suffix == null) {
+          break; // no more suffixes available
+        }
+
+        suffixWords.add(suffix);
 
         if (suffixWords.length >= suffixCount) {
-          if (suffix.distFromTail.containsKey(0)) {
+          final tailDistances = await kb.getTailDistances(suffix.wordHash, order: OrderingMode.asc);
+          if (tailDistances.first.dist == 0) {
             break;
           } else if (suffixWords.length / suffixCount > 1.5) {
-            final lastTailIndex = suffixWords.reversed
-                .takeWhile((word) => !word.distFromTail.containsKey(0))
-                .length;
-
-            if (lastTailIndex < suffixWords.length) {
-              suffixWords.removeRange(lastTailIndex + 1, suffixWords.length);
+            var lastTailIndex = suffixWords.length - 1;
+            // work backwards to find the last suffix that has a distance of 0
+            for (final suffix in suffixWords.reversed) {
+              final tailDistances = await kb.getTailDistances(
+                suffix.wordHash,
+                order: OrderingMode.asc,
+              );
+              // if this is a tail distance of 0 (appropriate end of sentence), then we can stop
+              if (tailDistances.first.dist == 0) {
+                break;
+              }
+              lastTailIndex--;
             }
+
+            // remove from end of list after the last tail found
+            suffixWords.removeRange(
+              lastTailIndex + 1,
+              suffixWords.length,
+            );
 
             break;
           }

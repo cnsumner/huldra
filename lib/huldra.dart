@@ -111,16 +111,24 @@ class Huldra {
     });
 
     bot.onReady.listen((_) {
-      print('Huldra is awake...');
+      Logger("Huldra").info('Huldra is awake...');
     });
 
-    kb.getMetadata().then((value) => print('Metadata loaded with ${value.wordCount} words.'));
-    kb.countWords().getSingle().then((value) => print('Knowledgebase loaded with $value words.'));
+    kb.getMetadata().then(
+      (value) => Logger("Huldra").info('Metadata loaded with ${value.wordCount} words.'),
+    );
+    kb.countWords().getSingle().then(
+      (value) => Logger("Huldra").info('Knowledgebase loaded with $value words.'),
+    );
   }
 
   Future<bool> _addMessage(Message m, Snowflake? guildId, {bool printDebugLogs = true}) async {
     if (guildId == null) {
-      print("Skipping message ${m.id}: guild is null. this probably shouldn't happen");
+      Logger(
+        "Huldra",
+      ).warning(
+        "Skipping message ${m.id}: guild is null. this probably shouldn't happen or be possible...",
+      );
       return false;
     }
 
@@ -170,7 +178,7 @@ class Huldra {
                 (e as SqliteException).message.contains('UNIQUE constraint failed: messages.id')) {
               _printLogIf('Skipping message already in db', printDebugLogs);
             } else {
-              print('Failed to add message to db: $e');
+              Logger("Huldra").warning('Failed to add message to db: $e');
             }
             error = true;
           },
@@ -179,19 +187,9 @@ class Huldra {
     if (error) {
       return false;
     } else {
-      final kb = Injector.appInstance.get<KnowledgeBase>();
-      var metadata = await kb.getMetadata();
-      final wordMap = <String, Word>{};
-      metadata = await Markov.train(
-        metadata,
-        wordMap,
+      await Markov.train(
         message.content.replaceFirst(RegExp('<@!?${bot.user.id}>'), '').split(' ')
-          ..removeWhere((word) => word == ''),
-      );
-
-      await kb.updateMetadata(metadata);
-      await kb.updateWords(
-        wordMap.entries.map<Word>((entry) => entry.value).toList(growable: false),
+          ..removeWhere((word) => word == '' || word == ' '),
       );
 
       return true;
@@ -253,7 +251,8 @@ class Huldra {
   }
 
   Future<void> _processCommands(MessageCreateEvent e) async {
-    if (e.message.content.startsWith('_fetch') && e.message.author.id.value == ownerId) {
+    if (e.message.content.toLowerCase().startsWith('_fetch') &&
+        e.message.author.id.value == ownerId) {
       final arguments = e.message.content.split(' ')..removeAt(0);
       if (arguments.isNotEmpty && e.guild != null) {
         _fetchMessages(e.guild!.id, Snowflake.parse(arguments[0]));
@@ -262,12 +261,13 @@ class Huldra {
           MessageBuilder(content: 'Invalid arguments or no guild'),
         );
       }
-    } else if (e.message.content.startsWith('_trainall') && e.message.author.id.value == ownerId) {
+    } else if (e.message.content.toLowerCase().startsWith('_trainall') &&
+        e.message.author.id.value == ownerId) {
       _trainAll();
-    } else if (e.message.content.startsWith('_exportCorpus') &&
+    } else if (e.message.content.toLowerCase().startsWith('_exportcorpus') &&
         e.message.author.id.value == ownerId) {
       _exportCorpus();
-    } else if (e.message.content.startsWith('_query')) {
+    } else if (e.message.content.toLowerCase().startsWith('_query')) {
       final arguments = e.message.content.split(' ')..removeAt(0);
       if (arguments.isNotEmpty && arguments.length == 1) {
         await _query(arguments[0]).then((value) async {
@@ -359,73 +359,41 @@ class Huldra {
   }
 
   Future<void> _trainAll() async {
-    // var metadata = Hive.box('metadata');
-    // var kb = Hive.box<Word>('kb');
-
-    // await metadata.clear();
-    // await kb.clear();
-
-    // var markov = Markov();
-    // await metadata.put('markov', markov);
-
-    // var messages =
-    //     await Injector.appInstance.getDependency<tables.RawData>().allMessages;
-
-    // for (var message in messages) {
-    //   var words = message.content.split(' ')..removeWhere((word) => word == '');
-
-    //   markov.train(words);
-    // }
-
-    // await markov.save();
-
-    // print(
-    //     'Trained on ${markov.wordCount} words from ${markov.msgCount} messages');
-
-    // open corpus file for writing
-
     final kb = Injector.appInstance.get<KnowledgeBase>();
-
     await kb.clearKnowledgeBase();
 
     var count = 0;
-
     var pageSize = 1000;
-
     var messages = await Injector.appInstance.get<tables.RawData>().getPagedMessages(pageSize);
 
     final stopwatch = Stopwatch();
+    final totalStopwatch = Stopwatch()..start();
     double? lastFreq;
     var performanceBias = 0;
     var direction = 1;
 
+    // Get total message count for progress bar
+    final totalMessages = await Injector.appInstance
+        .get<tables.RawData>()
+        .managers
+        .messages
+        .count();
+
     while (messages.isNotEmpty) {
       stopwatch.reset();
       stopwatch.start();
-      var metadata = await kb.getMetadata();
-      final wordMap = <String, Word>{};
 
       for (final message in messages) {
         final sanitizedMessage = message.content
             .replaceFirst(RegExp('<@!?${bot.user.id}>'), '')
             .trim();
-        final tokens = sanitizedMessage.split(' ')..removeWhere((token) => token == '');
+        final tokens = sanitizedMessage.split(' ')
+          ..removeWhere((token) => token == '' || token == ' ');
 
-        metadata = await Markov.train(metadata, wordMap, tokens);
+        await Markov.train(tokens);
       }
 
-      await kb.updateWords(
-        wordMap.entries.map<Word>((entry) => entry.value).toList(growable: false),
-      );
-
-      await kb.updateMetadata(metadata);
-
-      // await Future.delayed(Duration(milliseconds: 100));
-
       count += messages.length;
-
-      print('Trained ${metadata.wordCount} words from $count messages');
-
       final msgCount = messages.length;
 
       messages = await Injector.appInstance.get<tables.RawData>().getPagedMessages(
@@ -435,64 +403,71 @@ class Huldra {
 
       stopwatch.stop();
 
-      final freq = msgCount / stopwatch.elapsedMilliseconds;
+      final freq =
+          msgCount / (stopwatch.elapsedMilliseconds > 0 ? stopwatch.elapsedMilliseconds : 1);
+
+      // --- Unicode Block Progress Bar ---
+      final percent = (count / totalMessages).clamp(0, 1);
+      const barLength = 40;
+      final filledLength = (barLength * percent).round();
+      final bar = '█' * filledLength + '-' * (barLength - filledLength);
+      final percentDisplay = (percent * 100).toStringAsFixed(1).padLeft(5);
+
+      // --- ETA Calculation ---
+      final elapsed = totalStopwatch.elapsed.inSeconds;
+      final avgSpeed = elapsed > 0 ? count / elapsed : 0;
+      final remaining = totalMessages - count;
+      final etaSeconds = avgSpeed > 0 ? (remaining / avgSpeed).round() : 0;
+      final etaH = (etaSeconds ~/ 3600).toString().padLeft(2, '0');
+      final etaM = ((etaSeconds % 3600) ~/ 60).toString().padLeft(2, '0');
+      final etaS = (etaSeconds % 60).toString().padLeft(2, '0');
+      final etaDisplay = '$etaH:$etaM:$etaS';
+
+      // Print progress bar (first line)
+      stdout.write('\r$bar $percentDisplay%'.padRight(60));
+      // Print states (second line)
+      stdout.write(
+        '\nSpeed: ${(freq * 1000).toStringAsFixed(2)} msgs/s | $count/$totalMessages messages | Page size: $pageSize | ETA: $etaDisplay'
+            .padRight(80),
+      );
+      // Move cursor up one line to keep overwriting the same two lines
+      stdout.write('\x1B[1A');
 
       if (lastFreq == null) {
         lastFreq = freq;
         continue;
       } else {
         if (lastFreq > freq) {
-          // slowing down...
           performanceBias -= performanceBias > -10 ? 1 : 0;
         } else if (lastFreq < freq) {
-          // speeding up!
           performanceBias += performanceBias < 2 ? 2 : 0;
         }
 
-        direction *= performanceBias.sign == 0 ? 1 : performanceBias.sign;
-        print('Frequency: ${freq * 1000} msgs/s');
-        print('Performance bias: $performanceBias');
+        if (performanceBias.abs() > 3) {
+          direction = performanceBias.sign == 0 ? 1 : performanceBias.sign;
+          performanceBias = 0;
+        }
 
         if ((pageSize < 2000 && direction > 0) || (pageSize > 100 && direction < 0)) {
           pageSize += 100 * direction;
-          print('Changing page size to $pageSize');
         }
 
         lastFreq = freq;
       }
     }
 
+    totalStopwatch.stop();
+
+    // Print newline after progress bar is done
+    stdout.write('\n');
+
     await kb.getMetadata().then(
-      (value) => print('Trained on ${value.wordCount} words from ${value.msgCount} messages'),
+      (value) => print(
+        'Trained on \u001b[1m${value.wordCount}\u001b[0m words from \u001b[1m${value.msgCount}\u001b[0m messages',
+      ),
     );
 
     await kb.countWords().getSingle().then((value) => print('Kb now contains $value words'));
-
-    // var words =
-    //     messages.map((m) => m.content.split(' ')).expand((w) => w).toList();
-
-    // var wordCounts = <String, int>{};
-
-    // for (var word in words) {
-    //   if (word != '') {
-    //     if (wordCounts.containsKey(word)) {
-    //       wordCounts[word] += 1;
-    //     } else {
-    //       wordCounts[word] = 1;
-    //     }
-    //   }
-    // }
-
-    // var mostCommon = wordCounts.entries.toList()
-    //   ..sort((a, b) => b.value.compareTo(a.value));
-
-    // print(
-    //     'Extracted ${wordCounts.length} words from ${messages.length} messages');
-
-    // var top50 =
-    //     mostCommon.getRange(0, 50).map((m) => '${m.key}: ${m.value}').toList();
-
-    // top50.forEach((w) => print(w));
   }
 
   Future<void> _exportCorpus() async {
@@ -539,7 +514,7 @@ class Huldra {
     await sink.flush();
     await sink.close();
 
-    print('Corpus file written to ${corpusFile.path}');
+    Logger("Huldra").info('Corpus file written to ${corpusFile.path}');
   }
 
   Future<String> _query(String word) async {
@@ -568,7 +543,7 @@ class Huldra {
 
   void _printLogIf(String message, bool shouldLog) {
     if (shouldLog) {
-      print(message);
+      Logger("Huldra").info(message);
     }
   }
 
@@ -578,7 +553,7 @@ class Huldra {
     // if the output is the same as the input, try again a few times
     for (var i = 0; i < 2; i++) {
       if (output.trim().compareTo(original.trim()) == 0) {
-        print('Duplicate message generated, retrying...');
+        Logger("Huldra").info('Duplicate message generated, retrying...');
         output = await Markov.generate(tokens);
       } else {
         break;

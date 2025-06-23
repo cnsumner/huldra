@@ -33,7 +33,14 @@ void main() async {
     }
     final rawDataFile = File('$basePath/rawData.sqlite');
 
-    return RawData(NativeDatabase(rawDataFile));
+    return RawData(
+      NativeDatabase.createInBackground(
+        rawDataFile,
+        setup: (db) {
+          db.execute('PRAGMA journal_mode = WAL;');
+        },
+      ),
+    );
   });
 
   injector.registerSingleton<KnowledgeBase>(() {
@@ -44,7 +51,15 @@ void main() async {
     }
     final kbFile = File('$basePath/kb.sqlite');
 
-    return KnowledgeBase(NativeDatabase(kbFile));
+    return KnowledgeBase(
+      NativeDatabase.createInBackground(
+        kbFile,
+        setup: (db) {
+          db.execute('PRAGMA journal_mode = WAL;');
+          db.execute('PRAGMA foreign_keys = ON;');
+        },
+      ),
+    );
   });
 
   final config = Injector.appInstance.get<YamlConfig>();
@@ -61,6 +76,7 @@ void main() async {
   final nyxxClient = await Nyxx.connectGateway(
     config.discordToken,
     GatewayIntents.all,
+    options: GatewayClientOptions(plugins: [logging, cliIntegration]),
   );
 
   // initialize bot
