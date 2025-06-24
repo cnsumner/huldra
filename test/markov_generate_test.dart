@@ -19,13 +19,15 @@ void main() {
       Injector.appInstance.registerSingleton<KnowledgeBase>(() => db);
 
       await Markov.train([
-        'this',
-        'is',
-        'a',
-        'test',
-        'sentence',
-        'for',
-        'testing',
+        [
+          'this',
+          'is',
+          'a',
+          'test',
+          'sentence',
+          'for',
+          'testing',
+        ],
       ]);
     });
 
@@ -47,7 +49,7 @@ void main() {
 
     test('generates a sentence from tokens (no fastText)', () async {
       final tokens = ['hello', 'test'];
-      await Markov.train(tokens);
+      await Markov.train([tokens]);
 
       String sentence;
       try {
@@ -71,7 +73,7 @@ void main() {
         return fasttext;
       });
       final tokens = ['hello', 'world'];
-      await Markov.train(tokens);
+      await Markov.train([tokens]);
 
       String sentence;
       try {

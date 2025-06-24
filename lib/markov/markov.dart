@@ -29,69 +29,127 @@ class Markov {
   ///
   /// Trains the markov chain off of [tokens], converting them into [Word] objects
   static Future<void> train(
-    List<String> tokens,
+    List<List<String>> tokenBatches,
   ) async {
-    if (tokens.isEmpty) {
-      return;
-    }
-
     final kb = Injector.appInstance.get<KnowledgeBase>();
 
-    final dupeCheck = <String, bool>{};
+    // map of word literal -> hash
+    final keys = <String, String>{};
 
-    final keys = tokens.map((token) => sha1.convert(utf8.encode(token)).toString());
+    // maps for batching inserts, Strings are the hashes of words
+    final words = <String, WordsCompanion>{};
+    final headDistances = <(String, int), HeadDistancesCompanion>{};
+    final tailDistances = <(String, int), TailDistancesCompanion>{};
+    final prefixes = <(String, String), PrefixesCompanion>{};
+    final suffixes = <(String, String), SuffixesCompanion>{};
 
-    var newWordCount = 0;
-
-    final prefixes = <PrefixesCompanion>[];
-    final suffixes = <SuffixesCompanion>[];
-    final headDistances = <HeadDistancesCompanion>[];
-    final tailDistances = <TailDistancesCompanion>[];
-
-    for (var i = 0; i < tokens.length; i++) {
-      final key = keys.elementAt(i);
-
-      final word = await kb.upsertWord(
-        key,
-        tokens[i],
-        updateMsgCount: !dupeCheck.containsKey(key),
-      );
-
-      if (word.msgOccurances == 1 && word.totalOccurances == 1) {
-        newWordCount++;
+    for (final tokens in tokenBatches) {
+      if (tokens.isEmpty) {
+        continue; // skip empty batches
       }
 
-      headDistances.add(HeadDistancesCompanion.insert(wordHash: key, distance: i, count: 1));
-      tailDistances.add(
-        TailDistancesCompanion.insert(wordHash: key, distance: (tokens.length - 1) - i, count: 1),
-      );
+      final dupeCheck = <String, bool>{};
 
-      dupeCheck.putIfAbsent(key, () => true);
+      for (final (i, token) in tokens.indexed) {
+        // get key from map or insert it if not present
+        final key = keys.putIfAbsent(
+          token,
+          () => sha1.convert(utf8.encode(token)).toString(),
+        );
 
-      if (i != 0) {
-        final prefixKey = sha1.convert(utf8.encode(tokens[i - 1])).toString();
-        prefixes.add(PrefixesCompanion.insert(wordHash: key, prefixHash: prefixKey, count: 1));
-      }
+        words.update(
+          key,
+          (existing) => existing.copyWith(
+            totalOccurances: Value(existing.totalOccurances.value + 1),
+            msgOccurances: dupeCheck.containsKey(key)
+                ? existing.msgOccurances
+                : Value(existing.msgOccurances.value + 1),
+          ),
+          ifAbsent: () => WordsCompanion.insert(
+            wordHash: key,
+            word: token,
+            totalOccurances: const Value(1),
+            msgOccurances: const Value(1),
+          ),
+        );
 
-      if (i != tokens.length - 1) {
-        final suffixKey = sha1.convert(utf8.encode(tokens[i + 1])).toString();
-        suffixes.add(SuffixesCompanion.insert(wordHash: key, suffixHash: suffixKey, count: 1));
+        dupeCheck.putIfAbsent(key, () => true);
+
+        headDistances.update(
+          (key, i),
+          (existing) => existing.copyWith(
+            count: Value(existing.count.value + 1),
+          ),
+          ifAbsent: () => HeadDistancesCompanion.insert(
+            wordHash: key,
+            distance: i,
+            count: 1,
+          ),
+        );
+
+        tailDistances.update(
+          (key, tokens.length - 1 - i),
+          (existing) => existing.copyWith(
+            count: Value(existing.count.value + 1),
+          ),
+          ifAbsent: () => TailDistancesCompanion.insert(
+            wordHash: key,
+            distance: tokens.length - 1 - i,
+            count: 1,
+          ),
+        );
+
+        if (i > 0) {
+          final prefixKey = keys.putIfAbsent(
+            key,
+            () => sha1.convert(utf8.encode(tokens[i - 1])).toString(),
+          );
+          prefixes.update(
+            (key, prefixKey),
+            (existing) => existing.copyWith(
+              count: Value(existing.count.value + 1),
+            ),
+            ifAbsent: () => PrefixesCompanion.insert(
+              wordHash: key,
+              prefixHash: prefixKey,
+              count: 1,
+            ),
+          );
+        }
+
+        if (i < tokens.length - 1) {
+          final suffixKey = keys.putIfAbsent(
+            key,
+            () => sha1.convert(utf8.encode(tokens[i + 1])).toString(),
+          );
+          suffixes.update(
+            (key, suffixKey),
+            (existing) => existing.copyWith(
+              count: Value(existing.count.value + 1),
+            ),
+            ifAbsent: () => SuffixesCompanion.insert(
+              wordHash: key,
+              suffixHash: suffixKey,
+              count: 1,
+            ),
+          );
+        }
       }
     }
 
-    await kb.batch((batch) async {
-      kb.upsertHeadDists(headDistances, batch);
-      kb.upsertTailDists(tailDistances, batch);
-      kb.upsertPrefixes(prefixes, batch);
-      kb.upsertSuffixes(suffixes, batch);
+    // batch insert all the data into the database
+    await kb.batch((batch) {
+      kb.upsertWords(words.values, batch);
+      kb.upsertHeadDists(headDistances.values, batch);
+      kb.upsertTailDists(tailDistances.values, batch);
+      kb.upsertPrefixes(prefixes.values, batch);
+      kb.upsertSuffixes(suffixes.values, batch);
     });
-
-    await kb.updateMetadata(msgCount: 1, wordCount: newWordCount);
   }
 
   static Future<String> generate(List<String> tokens) async {
     final kb = Injector.appInstance.get<KnowledgeBase>();
-    final useFastText = Injector.appInstance.get<YamlConfig>().getBool('useFastText');
+    final useFastText = Injector.appInstance.get<YamlConfig>().useFastText;
     final rand = Random(DateTime.now().millisecondsSinceEpoch);
 
     final metadata = await kb.getMetadata();

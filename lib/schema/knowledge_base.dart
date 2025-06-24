@@ -83,7 +83,7 @@ class KnowledgeBase extends _$KnowledgeBase {
       (select(words)..where((word) => word.wordHash.isIn(hashes))).get();
 
   // create new word record or update existing one on conflict
-  Future<Word> upsertWord(String hash, String word, {bool updateMsgCount = false}) async {
+  Future<Word> upsertWord(String hash, String word, {bool updateMsgCount = false}) {
     return into(words).insertReturning(
       WordsCompanion.insert(wordHash: hash, word: word),
       onConflict: DoUpdate(
@@ -98,48 +98,65 @@ class KnowledgeBase extends _$KnowledgeBase {
     );
   }
 
+  void upsertWords(Iterable<WordsCompanion> words, Batch batch) {
+    return batch.insertAll<Words, Word>(
+      this.words,
+      words,
+      onConflict: DoUpdate.withExcluded(
+        (old, excluded) {
+          return WordsCompanion.custom(
+            totalOccurances: old.totalOccurances + excluded.totalOccurances,
+            msgOccurances: old.msgOccurances + excluded.msgOccurances,
+          );
+        },
+      ),
+    );
+  }
+
   void upsertHeadDists(
-    List<HeadDistancesCompanion> distances,
+    Iterable<HeadDistancesCompanion> distances,
     Batch batch,
   ) {
-    batch.insertAll(
+    batch.insertAll<HeadDistances, HeadDistance>(
       headDistances,
       distances,
-      onConflict: DoUpdate<HeadDistances, HeadDistance>(
-        (old) => HeadDistancesCompanion.custom(count: old.count + const Constant(1)),
+      onConflict: DoUpdate.withExcluded(
+        (old, excluded) => HeadDistancesCompanion.custom(
+          count: old.count + excluded.count,
+        ),
       ),
     );
   }
 
   void upsertTailDists(
-    List<TailDistancesCompanion> distances,
+    Iterable<TailDistancesCompanion> distances,
     Batch batch,
   ) {
     batch.insertAll<TailDistances, TailDistance>(
       tailDistances,
       distances,
-      onConflict: DoUpdate(
-        (old) => TailDistancesCompanion.custom(count: old.count + const Constant(1)),
+      onConflict: DoUpdate.withExcluded(
+        (old, excluded) => TailDistancesCompanion.custom(count: old.count + excluded.count),
       ),
     );
   }
 
-  void upsertPrefixes(List<PrefixesCompanion> prefixes, Batch batch) {
+  void upsertPrefixes(Iterable<PrefixesCompanion> prefixes, Batch batch) {
     batch.insertAll<Prefixes, Prefixe>(
       this.prefixes,
       prefixes,
-      onConflict: DoUpdate(
-        (old) => PrefixesCompanion.custom(count: old.count + const Constant(1)),
+      onConflict: DoUpdate.withExcluded(
+        (old, excluded) => PrefixesCompanion.custom(count: old.count + excluded.count),
       ),
     );
   }
 
-  void upsertSuffixes(List<SuffixesCompanion> suffixes, Batch batch) {
+  void upsertSuffixes(Iterable<SuffixesCompanion> suffixes, Batch batch) {
     batch.insertAll<Suffixes, Suffixe>(
       this.suffixes,
       suffixes,
-      onConflict: DoUpdate(
-        (old) => SuffixesCompanion.custom(count: old.count + const Constant(1)),
+      onConflict: DoUpdate.withExcluded(
+        (old, excluded) => SuffixesCompanion.custom(count: old.count + excluded.count),
       ),
     );
   }

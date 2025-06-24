@@ -188,8 +188,10 @@ class Huldra {
       return false;
     } else {
       await Markov.train(
-        message.content.replaceFirst(RegExp('<@!?${bot.user.id}>'), '').split(' ')
-          ..removeWhere((word) => word == '' || word == ' '),
+        [
+          message.content.replaceFirst(RegExp('<@!?${bot.user.id}>'), '').split(' ')
+            ..removeWhere((word) => word == '' || word == ' '),
+        ],
       );
 
       return true;
@@ -383,18 +385,20 @@ class Huldra {
       stopwatch.reset();
       stopwatch.start();
 
-      for (final message in messages) {
+      final tokenBatches = messages.map((message) {
         final sanitizedMessage = message.content
             .replaceFirst(RegExp('<@!?${bot.user.id}>'), '')
             .trim();
         final tokens = sanitizedMessage.split(' ')
           ..removeWhere((token) => token == '' || token == ' ');
 
-        await Markov.train(tokens);
-      }
+        return tokens;
+      }).toList();
 
-      count += messages.length;
+      await Markov.train(tokenBatches);
+
       final msgCount = messages.length;
+      count += msgCount;
 
       messages = await Injector.appInstance.get<tables.RawData>().getPagedMessages(
         pageSize,
@@ -448,13 +452,20 @@ class Huldra {
           performanceBias = 0;
         }
 
-        if ((pageSize < 2000 && direction > 0) || (pageSize > 100 && direction < 0)) {
+        if ((pageSize < 10000 && direction > 0) || (pageSize > 100 && direction < 0)) {
           pageSize += 100 * direction;
         }
 
         lastFreq = freq;
       }
     }
+
+    final wordCount = await kb.countWords().getSingle();
+
+    kb.updateMetadata(
+      msgCount: count,
+      wordCount: wordCount,
+    );
 
     totalStopwatch.stop();
 
@@ -467,7 +478,7 @@ class Huldra {
       ),
     );
 
-    await kb.countWords().getSingle().then((value) => print('Kb now contains $value words'));
+    print('Kb now contains $wordCount words');
   }
 
   Future<void> _exportCorpus() async {
