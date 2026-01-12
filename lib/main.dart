@@ -39,6 +39,7 @@ void main() async {
         setup: (db) {
           db.execute('PRAGMA journal_mode = WAL;');
         },
+        readPool: 4,
       ),
     );
   });
@@ -58,6 +59,7 @@ void main() async {
           db.execute('PRAGMA journal_mode = WAL;');
           db.execute('PRAGMA foreign_keys = ON;');
         },
+        readPool: 4,
       ),
     );
   });

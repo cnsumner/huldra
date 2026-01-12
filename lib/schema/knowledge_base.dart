@@ -164,12 +164,9 @@ class KnowledgeBase extends _$KnowledgeBase {
   Future<List<Word>> queryWords(String word) =>
       (select(words)..where((tbl) => tbl.word.lower().equals(word.toLowerCase()))).get();
 
-  Future<MetaData> getMetadata() {
-    return select(meta).getSingle().onError((error, stackTrace) {
-      return into(meta)
-          .insert(const MetaData(id: 1, msgCount: 0, wordCount: 0))
-          .then<MetaData>((_) => select(meta).getSingle());
-    });
+  Future<MetaData> getMetadata() async {
+    return (await select(meta).getSingleOrNull()) ??
+        Future.value(const MetaData(id: 1, msgCount: 0, wordCount: 0));
   }
 
   Future<List<({int dist, int weight})>> getHeadDistances(
@@ -238,6 +235,9 @@ class KnowledgeBase extends _$KnowledgeBase {
       await delete(tailDistances).go();
       await delete(words).go();
       await delete(meta).go();
+      await into(meta).insert(
+        const MetaData(id: 1, msgCount: 0, wordCount: 0),
+      );
     });
   }
 

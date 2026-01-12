@@ -14,6 +14,10 @@ import 'package:nyxx/nyxx.dart';
 import 'package:nyxx_extensions/nyxx_extensions.dart';
 
 class Huldra {
+  /// Recent message cache: maps channel ID to a list of up to 3 recent messages.
+  /// The current message is added before using the cache for context, so the latest message is always included.
+  /// Channel IDs are unique across Discord, so no need to include guild ID.
+  final Map<String, List<Message>> _recentMessageCache = {};
   NyxxGateway bot;
   int probability;
   int ownerId;
@@ -22,8 +26,14 @@ class Huldra {
     final kb = Injector.appInstance.get<KnowledgeBase>();
 
     bot.onMessageCreate.listen((e) async {
-      // ignore bot messages and empty messages
       final author = await e.member?.get();
+
+      // Update recent message cache for this channel
+      if (author?.user?.id != bot.user.id) {
+        _updateRecentMessageCache(e.message);
+      }
+
+      // ignore bot messages and empty messages
       if (author?.user?.isBot == true ||
           (e.message.content.isEmpty && e.message.attachments.isEmpty)) {
         print('Ignoring bot or empty message: ${e.message.id.value}');
@@ -49,11 +59,9 @@ class Huldra {
 
         await _addMessage(e.message, e.guild?.id)
             .whenComplete(() async {
-              final input = e.message.content.split(' ')
-                ..removeAt(0)
-                ..removeWhere((word) => word == '');
-
-              final reply = await generateNonDuplicate(input, input.join(' ').trim());
+              final channelId = e.message.channel.id.toString();
+              final contextTokens = _getRecentContextTokens(channelId);
+              final reply = await generateNonDuplicate(contextTokens, contextTokens.join(' '));
 
               await Future.delayed(
                 Duration(milliseconds: 100 * reply.split(' ').length.clamp(5, 100)),
@@ -88,9 +96,11 @@ class Huldra {
 
         await _addMessage(e.message, e.guild?.id).whenComplete(() async {
           if (willReply) {
+            final channelId = e.message.channel.id.toString();
+            final contextTokens = _getRecentContextTokens(channelId);
             final reply = (await generateNonDuplicate(
-              e.message.content.split(' ')..removeWhere((word) => word == ''),
-              e.message.content,
+              contextTokens,
+              contextTokens.join(' '),
             )).trim();
 
             await Future.delayed(
@@ -365,7 +375,7 @@ class Huldra {
     await kb.clearKnowledgeBase();
 
     var count = 0;
-    var pageSize = 1000;
+    var pageSize = 4000;
     var messages = await Injector.appInstance.get<tables.RawData>().getPagedMessages(pageSize);
 
     final stopwatch = Stopwatch();
@@ -444,16 +454,13 @@ class Huldra {
         if (lastFreq > freq) {
           performanceBias -= performanceBias > -10 ? 1 : 0;
         } else if (lastFreq < freq) {
-          performanceBias += performanceBias < 2 ? 2 : 0;
+          performanceBias += performanceBias < 10 ? 2 : 0;
         }
 
-        if (performanceBias.abs() > 3) {
-          direction = performanceBias.sign == 0 ? 1 : performanceBias.sign;
+        if (performanceBias.abs() > 5) {
+          pageSize += 100 * performanceBias.sign;
+          pageSize = pageSize.clamp(1000, 10000);
           performanceBias = 0;
-        }
-
-        if ((pageSize < 10000 && direction > 0) || (pageSize > 100 && direction < 0)) {
-          pageSize += 100 * direction;
         }
 
         lastFreq = freq;
@@ -462,7 +469,7 @@ class Huldra {
 
     final wordCount = await kb.countWords().getSingle();
 
-    kb.updateMetadata(
+    await kb.updateMetadata(
       msgCount: count,
       wordCount: wordCount,
     );
@@ -506,7 +513,6 @@ class Huldra {
             .trim();
 
         if (sanitized.isEmpty) {
-          _printLogIf('Skipping empty message ${message.id}', true);
           continue;
         }
 
@@ -577,5 +583,28 @@ class Huldra {
     }
 
     return output.replaceAll(RegExp('<@!?${bot.user.id}>'), '').trim();
+  }
+
+  /// Updates the recent message cache for a channel, keeping only the 3 most recent messages.
+  void _updateRecentMessageCache(Message message) {
+    final channelId = message.channel.id.toString();
+    final cache = _recentMessageCache[channelId] ?? <Message>[];
+    cache.add(message);
+    if (cache.length > 3) {
+      cache.removeAt(0); // Remove oldest
+    }
+    _recentMessageCache[channelId] = cache;
+  }
+
+  /// Returns a list of tokens from the recent message cache for a channel (oldest to newest).
+  List<String> _getRecentContextTokens(String channelId) {
+    final messages = _recentMessageCache[channelId] ?? [];
+    // Concatenate all message contents, split into tokens, and remove empty tokens
+    return messages
+        .map((m) => m.content)
+        .join(' ')
+        .split(' ')
+        .where((word) => word.trim().isNotEmpty)
+        .toList();
   }
 }

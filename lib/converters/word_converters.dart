@@ -7,8 +7,9 @@ class StringIntMapConverter extends TypeConverter<Map<String, int>, String> {
 
   @override
   Map<String, int> fromSql(String fromDb) {
-    return (json.decode(fromDb) as Map<String, dynamic>)
-        .map((key, value) => MapEntry(key, value as int));
+    return (json.decode(fromDb) as Map<String, dynamic>).map(
+      (key, value) => MapEntry(key, value as int),
+    );
   }
 
   @override
@@ -22,13 +23,13 @@ class IntIntMapConverter extends TypeConverter<Map<int, int>, String> {
 
   @override
   Map<int, int> fromSql(String fromDb) {
-    return (json.decode(fromDb) as Map<String, dynamic>)
-        .map((key, value) => MapEntry(int.parse(key), value as int));
+    return (json.decode(fromDb) as Map<String, dynamic>).map(
+      (key, value) => MapEntry(int.parse(key), value as int),
+    );
   }
 
   @override
   String toSql(Map<int, int> value) {
-    return json
-        .encode(value.map((key, value) => MapEntry(key.toString(), value)));
+    return json.encode(value.map((key, value) => MapEntry(key.toString(), value)));
   }
 }

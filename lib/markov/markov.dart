@@ -9,6 +9,7 @@ import 'package:fasttext/fasttext.dart';
 import 'package:huldra/schema/knowledge_base.dart';
 import 'package:huldra/yaml_config.dart';
 import 'package:injector/injector.dart';
+import 'package:nyxx/nyxx.dart';
 
 class Markov {
   /// Computes the tf-idf of the given word
@@ -344,8 +345,12 @@ class Markov {
       }
     }
 
-    print('Attempting to generate $prefixCount prefixes and $suffixCount suffixes...');
-    print('Generated ${prefixWords.length} prefixes and ${suffixWords.length} suffixes.');
+    Logger(
+      "Huldra",
+    ).info('Attempting to generate $prefixCount prefixes and $suffixCount suffixes...');
+    Logger(
+      "Huldra",
+    ).info('Generated ${prefixWords.length} prefixes and ${suffixWords.length} suffixes.');
 
     return '${prefixWords.map((w) => w.word).toList().join(' ')} ${anchor.word} ${suffixWords.map((w) => w.word).toList().join(' ')}';
   }
