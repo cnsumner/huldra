@@ -6,9 +6,11 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 import 'package:fasttext/fasttext.dart';
+import 'package:huldra/extensions/vector_extensions.dart';
 import 'package:huldra/schema/knowledge_base.dart';
 import 'package:huldra/yaml_config.dart';
 import 'package:injector/injector.dart';
+import 'package:ml_linalg/vector.dart';
 import 'package:nyxx/nyxx.dart';
 
 class Markov {
@@ -157,11 +159,13 @@ class Markov {
 
     Word? anchor;
 
-    List<double>? sentenceVector;
+    Vector? sentenceVector;
 
     if (tokens.isNotEmpty) {
       sentenceVector = useFastText
-          ? Injector.appInstance.get<FastText>().getSentenceVector(tokens.join(' '))
+          ? Vector.fromList(
+              Injector.appInstance.get<FastText>().getSentenceVector(tokens.join(' ')),
+            )
           : null;
 
       final wordWeightMap = <double, Word>{};
@@ -178,9 +182,11 @@ class Markov {
         var similarity = 0.0;
 
         if (useFastText) {
-          final wordVector = Injector.appInstance.get<FastText>().getWordVector(word.word);
+          final wordVector = Vector.fromList(
+            Injector.appInstance.get<FastText>().getWordVector(word.word),
+          );
           // calculate similarity between sentence vector and word vector
-          similarity = cosineSimilarity(sentenceVector!, wordVector);
+          similarity = sentenceVector!.cosineSimilarity(wordVector);
         }
 
         wordWeightMap[tfidf * (useFastText ? similarity : 1.0)] = word;
@@ -203,7 +209,7 @@ class Markov {
     if (anchor == null) {
       anchor = await kb.randomWord().getSingle();
       sentenceVector = useFastText
-          ? Injector.appInstance.get<FastText>().getWordVector(anchor.word)
+          ? Vector.fromList(Injector.appInstance.get<FastText>().getWordVector(anchor.word))
           : null;
     }
 

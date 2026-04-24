@@ -12,6 +12,7 @@ dependencies:
   fasttext:
     path: ../fasttext
   injector: ^4.0.0
+  ml_linalg: ^13.12.7
   nyxx: ^6.7.0
   nyxx_extensions: ^4.4.0
   path: ^1.9.1

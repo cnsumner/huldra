@@ -2,8 +2,10 @@ import 'dart:math';
 
 import 'package:drift/drift.dart';
 import 'package:fasttext/fasttext.dart';
+import 'package:huldra/extensions/vector_extensions.dart';
 import 'package:huldra/schema/knowledge_base.dart';
 import 'package:injector/injector.dart';
+import 'package:ml_linalg/vector.dart';
 
 part 'random_selection_dao.g.dart';
 
@@ -103,7 +105,7 @@ class RandomSelectionDao extends DatabaseAccessor<KnowledgeBase> with _$RandomSe
   Future<Word?> _semanticContextWordSelection(
     double randomValue,
     List<Word> words,
-    List<double> context,
+    Vector context,
   ) async {
     if (words.isNotEmpty) {
       final fasttext = Injector.appInstance.get<FastText>();
@@ -115,8 +117,8 @@ class RandomSelectionDao extends DatabaseAccessor<KnowledgeBase> with _$RandomSe
 
       final wordWeights = Map.fromEntries(
         words.map((word) {
-          final embedding = fasttext.getWordVector(word.word);
-          final similarity = cosineSimilarity(context, embedding);
+          final embedding = Vector.fromList(fasttext.getWordVector(word.word));
+          final similarity = context.cosineSimilarity(embedding);
           return MapEntry(word, similarity);
         }),
       );
@@ -140,7 +142,7 @@ class RandomSelectionDao extends DatabaseAccessor<KnowledgeBase> with _$RandomSe
   Future<Word?> randomPrefixWithContext(
     String wordHash,
     double randomValue,
-    List<double> context,
+    Vector context,
   ) async {
     final prefixes = await attachedDatabase.managers.prefixes
         .withReferences((prefetch) => prefetch(prefixHash: true))
@@ -156,7 +158,7 @@ class RandomSelectionDao extends DatabaseAccessor<KnowledgeBase> with _$RandomSe
   Future<Word?> randomSuffixWithContext(
     String wordHash,
     double randomValue,
-    List<double> context,
+    Vector context,
   ) async {
     final suffixes = await attachedDatabase.managers.suffixes
         .withReferences((prefetch) => prefetch(suffixHash: true))
